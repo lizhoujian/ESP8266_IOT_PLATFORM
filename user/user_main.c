@@ -113,7 +113,6 @@ void user_init(void)
 	/*Initialize webserver*/
 	httpdInit(builtInUrls, 80);
 #endif
-
 }
 
 

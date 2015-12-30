@@ -1473,8 +1473,10 @@ user_esp_platform_maintainer(void *pvParameters)
             free(sta_config);
         }
         
-        if(TRUE == esp_param.tokenrdy) goto Local_mode;
-
+        if(TRUE == esp_param.tokenrdy) {
+            ESP_DBG("enter local mode.\n");
+            goto Local_mode;
+        }
     }else {
         struct station_config *sta_config5 = (struct station_config *)zalloc(sizeof(struct station_config)*5);
         int ret = wifi_station_get_ap_info(sta_config5);
@@ -1488,7 +1490,7 @@ user_esp_platform_maintainer(void *pvParameters)
                 xTaskCreate(smartconfig_task, "smartconfig_task", 256, NULL, 2, NULL);
 
                 while(device_status != DEVICE_GOT_IP){
-                    ESP_DBG("configing...\n");
+                    ESP_DBG("smartconfig...\n");
                     vTaskDelay(2000 / portTICK_RATE_MS);
                 }
             }
@@ -1509,7 +1511,7 @@ user_esp_platform_maintainer(void *pvParameters)
 
     /*if token not ready, wait here*/
     while(TRUE != esp_param.tokenrdy) {
-        //ESP_DBG("token invalid...\n");
+        ESP_DBG("wait token...\n");
         vTaskDelay(1000 / portTICK_RATE_MS);
     }
 
@@ -1647,7 +1649,7 @@ user_esp_platform_maintainer(void *pvParameters)
                     display_cipher(client_param.ssl);
                     quiet = true;
                 }
-#endif      
+#endif // CLIENT_SSL_ENABLE
                 user_esp_platform_connected(&client_param);
                 break;
             }
@@ -1659,7 +1661,8 @@ user_esp_platform_maintainer(void *pvParameters)
             //connect fail,go big loop, try another AP
             continue;
         }
-        
+
+        /* activate or identify */
         user_esp_platform_sent(&client_param);
         
         fd_set read_set,write_set;  
