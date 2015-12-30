@@ -1,0 +1,6 @@
+bin/
+.output/
+*.a
+*.o
+*.out
+*.espfs
