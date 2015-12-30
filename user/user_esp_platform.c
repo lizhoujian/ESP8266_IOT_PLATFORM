@@ -1415,6 +1415,29 @@ static void upgrade_spiffs_config(void)
 }
 #endif
 
+static bool esp_token_invalid()
+{
+    int i = 0;
+    uint8 *ptoken = esp_param.token;
+    if (esp_param.tokenrdy) {
+        for (i = 0; i < sizeof(esp_param.token) / sizeof(esp_param.token[0]); i++) {
+            if (ptoken[i] != 0xff || ptoken[i] != 0x0)
+                return false;
+        }
+    }
+    return true;
+}
+
+static void user_esp_platform_set_token_default()
+{
+    uint8 t[41] = {0,};
+    uint8 bssid[6] = {0,};
+
+    if (wifi_get_macaddr(STATION_IF, bssid)) {
+        sprintf(t, MACSTR"-%04x", MAC2STR(bssid), rand());
+        user_esp_platform_set_token(t);
+    }
+}
 
 void  
 user_esp_platform_maintainer(void *pvParameters)
@@ -1439,6 +1462,10 @@ user_esp_platform_maintainer(void *pvParameters)
     //vTaskDelay(10000 / portTICK_RATE_MS);//wait pc serial ready
 
     user_esp_platform_param_recover();
+    if (esp_token_invalid()) {
+        ESP_DBG("set esp token to default.\n");
+        user_esp_platform_set_token_default();
+    }
 
 #if PLUG_DEVICE
     user_plug_init();
