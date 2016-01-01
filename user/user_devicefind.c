@@ -37,6 +37,8 @@ LOCAL xQueueHandle QueueStop = NULL;
 const char *device_find_request = "Are You Espressif IOT Smart Device?";
 #if PLUG_DEVICE
 const char *device_find_response_ok = "I'm Plug.";
+#elif PLUGS_DEVICE
+const char *device_find_response_ok = "I'm Plugs.";
 #elif LIGHT_DEVICE
 const char *device_find_response_ok = "I'm Light.";
 #elif SENSOR_DEVICE

@@ -47,6 +47,13 @@
 #define FIRST_FRAME     "{\"nonce\": %d, \"path\": \"/v1/device/identify\", \"method\": \"GET\",\"meta\": {\"Authorization\": \"token %s\"}}\n"
 #endif
 
+#if PLUGS_DEVICE
+#include "user_plugs.h"
+
+#define RESPONSE_FRAME  "{\"status\": 200, \"datapoint\": {\"x\": %d,\"y\": %d,\"z\":\"%s\"}, \"nonce\": %d, \"deliver_to_device\": true}\n"
+#define FIRST_FRAME     "{\"nonce\": %d, \"path\": \"/v1/device/identify\", \"method\": \"GET\",\"meta\": {\"Authorization\": \"token %s\"}}\n"
+#endif
+
 #if LIGHT_DEVICE
 #include "user_light.h"
 
@@ -54,7 +61,7 @@
 #define FIRST_FRAME     "{\"nonce\": %d, \"path\": \"/v1/device/identify\", \"method\": \"GET\",\"meta\": {\"Authorization\": \"token %s\"}}\n"
 #endif
 
-#if PLUG_DEVICE || LIGHT_DEVICE
+#if PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE
 #define BEACON_FRAME    "{\"path\": \"/v1/ping/\", \"method\": \"POST\",\"meta\": {\"Authorization\": \"token %s\"}}\n"
 #define RPC_RESPONSE_FRAME  "{\"status\": 200, \"nonce\": %d, \"deliver_to_device\": true}\n"
 #define TIMER_FRAME     "{\"body\": {}, \"get\":{\"is_humanize_format_simple\":\"true\"},\"meta\": {\"Authorization\": \"Token %s\"},\"path\": \"/v1/device/timers/\",\"post\":{},\"method\": \"GET\"}\n"
@@ -115,7 +122,7 @@ LOCAL os_timer_t client_timer;
  *                pdata --
  * Returns      : none
 *******************************************************************************/
-#if (PLUG_DEVICE || SENSOR_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE)
 
 void  
 smartconfig_done(sc_status status, void *pdata)
@@ -368,6 +375,12 @@ user_esp_platform_get_info( struct client_conn_param *pclient_param, uint8 *pbuf
     if (pbuf != NULL) {
 #if PLUG_DEVICE
         sprintf(pbuf, RESPONSE_FRAME, user_plug_get_status(), nonce);
+#elif PLUGS_DEVICE
+        int c;
+        char *value_string;
+        c = user_plugs_count();
+        value_string = (char*)zalloc(c + 1);
+        sprintf(pbuf, RESPONSE_FRAME, user_plugs_get_status_int(), c, user_plugs_get_status_string(value_string, c + 1), nonce);
 #elif LIGHT_DEVICE
         uint32 white_val;
         white_val = (PWM_CHANNEL>LIGHT_COLD_WHITE?user_light_get_duty(LIGHT_COLD_WHITE):0);
@@ -414,7 +427,53 @@ user_esp_platform_set_info( struct client_conn_param *pclient_param, uint8 *pbuf
             }
         }
     }
+#elif PLUGS_DEVICE
+    printf("plugs request %s\n", pbuffer);
+    char *pstr = NULL;
+    char *pdata = NULL;
+    char *pbuf = NULL;
+    char recvbuf[10];
+    uint16 length = 0;
+    uint32 x = 0, y = 0, z = 0;
+    pstr = (char *)strstr(pbuffer, "\"path\": \"/v1/datastreams/plugs/datapoint/\"");
 
+    if (pstr != NULL) {
+        pstr = (char *)strstr(pbuffer, "{\"datapoint\": ");
+
+        if (pstr != NULL) {
+            pbuf = (char *)strstr(pbuffer, "}}");
+            length = pbuf - pstr;
+            length += 2;
+            pdata = (char *)zalloc(length + 1);
+            memcpy(pdata, pstr, length);
+
+            pstr = (char *)strchr(pdata, 'x');
+
+            if (pstr != NULL) {
+                pstr += 4;
+                x = atoi(pstr);
+                printf("plugs set int = %d\n", x);
+                user_plugs_set_status_int(32, x);
+            }
+
+            pstr = (char *)strchr(pdata, 'y');
+            if (pstr != NULL) {
+                pstr += 4;
+                y = atoi(pstr);
+                printf("plugs bits = %d\n", y);
+                pstr = (char *)strchr(pdata, 'z');
+                if (pstr != NULL) {
+                    pstr += 5;
+                    pstr[y] = '\0';
+                    printf("plugs bitValues = %s\n", pstr);
+                    user_plugs_set_status_string(pstr, y);
+                }
+            }
+     
+            free(pdata);
+        }
+    }
+    
 #elif LIGHT_DEVICE
     char *pstr = NULL;
     char *pdata = NULL;
@@ -560,7 +619,7 @@ user_esp_platform_discon(struct client_conn_param* pclient_param)
 {
     ESP_DBG("user_esp_platform_discon\n");
 
-#if (PLUG_DEVICE || SENSOR_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE)
     user_link_led_output(LED_OFF);
 #endif
 
@@ -664,7 +723,7 @@ user_esp_platform_sent(struct client_conn_param *pclient_param)
     }
 }
 
-#if PLUG_DEVICE || LIGHT_DEVICE
+#if PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE
 /******************************************************************************
  * FunctionName : user_esp_platform_sent_beacon
  * Description  : sent beacon frame for connection with the host is activate
@@ -927,7 +986,7 @@ user_esp_platform_data_process(struct client_conn_param *pclient_param, char *pu
                 device_status = DEVICE_ACTIVE_FAIL;
             }
         }
-#if (PLUG_DEVICE || LIGHT_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE)
         else if ((pstr = (char *)strstr(pbuffer, "\"action\": \"sys_upgrade\"")) != NULL) {
             if ((pstr = (char *)strstr(pbuffer, "\"version\":")) != NULL) {
                 
@@ -988,8 +1047,11 @@ user_esp_platform_data_process(struct client_conn_param *pclient_param, char *pu
         }
 #endif
         else if ((pstr = (char *)strstr(pbuffer, "device")) != NULL) {
-#if PLUG_DEVICE || LIGHT_DEVICE
+#if PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE
             user_platform_timer_get(pclient_param);
+#if PLUGS_DEVICE
+            printf("plugs data_process %s\n%s\n", pbuffer, pclient_param);
+#endif
 #elif SENSOR_DEVICE
 
 #endif
@@ -1069,7 +1131,7 @@ user_esp_platform_connected(struct client_conn_param *pclient_param)
 #endif
     }
 
-#if (PLUG_DEVICE || SENSOR_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE)
     user_link_led_output(LED_ON);
 #endif
 }
@@ -1469,6 +1531,8 @@ user_esp_platform_maintainer(void *pvParameters)
 
 #if PLUG_DEVICE
     user_plug_init();
+#elif PLUGS_DEVICE
+    user_plugs_init();
 #elif LIGHT_DEVICE
 	user_light_init();
 #elif SENSOR_DEVICE
@@ -1486,7 +1550,7 @@ user_esp_platform_maintainer(void *pvParameters)
         /*device power on with stationap mode defaultly, neednt config again*/
         //user_platform_stationap_enable();
         printf("enter softap+station mode\n");
-#if (PLUG_DEVICE || SENSOR_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE)
         user_link_led_output(LED_ON);//gpio 12
 #endif
         //for cloud test only
@@ -1550,7 +1614,7 @@ user_esp_platform_maintainer(void *pvParameters)
             break;
         }
 
-#if (PLUG_DEVICE || SENSOR_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE)
         //chenck ip or DNS, led start blinking
         if(wifi_get_opmode()==STATION_MODE)user_link_led_output(LED_5HZ);
 #endif
@@ -1748,7 +1812,7 @@ user_esp_platform_maintainer(void *pvParameters)
 #endif
                 }
             }
-#if (PLUG_DEVICE || LIGHT_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE)
             else{
                 //start the tmeout counter,once it reach the beacon time,send the beacon and wait response,
                 wifi_get_ip_info(STATION_IF, &sta_ipconfig);

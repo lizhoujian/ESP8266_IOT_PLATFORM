@@ -10,7 +10,8 @@
 #define WEB_SERVICE             0
 
 /*support one device at the same project*/
-#define PLUG_DEVICE             1
+#define PLUG_DEVICE             0
+#define PLUGS_DEVICE            1
 #define LIGHT_DEVICE            0
 #define SENSOR_DEVICE           0 //TBD
 
@@ -23,7 +24,7 @@
 
 #if ESP_PLATFORM
 
-#if PLUG_DEVICE || LIGHT_DEVICE
+#if PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE
 #define BEACON_TIMEOUT  150000000
 #define BEACON_TIME     50000
 #endif

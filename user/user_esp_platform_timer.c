@@ -228,6 +228,8 @@ user_esp_platform_device_action(struct wait_param *pwait_action)
     }
 
     user_platform_timer_first_start(count);
+#elif PLUGS_DEVICE
+    printf("plugs user_esp_platform_device_action.\n");
 #endif
 }
 

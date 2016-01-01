@@ -16,6 +16,8 @@
 #define device_type       45772
 #elif PLUG_DEVICE
 #define device_type       23701
+#elif PLUGS_DEVICE
+#define device_type       47446
 #elif SENSOR_DEVICE
 #define device_type       12335
 #endif

@@ -19,6 +19,9 @@
 #if PLUG_DEVICE
 #include "user_plug.h"
 #endif
+#if PLUGS_DEVICE
+#include "user_plugs.h"
+#endif
 #if LIGHT_DEVICE
 #include "user_light.h"
 #endif
@@ -141,6 +144,9 @@ system_info_get(cJSON *pcjson, const char* pname )
 #if PLUG_DEVICE
     cJSON_AddStringToObject(pSubJson_Device,"product", "Plug");
 #endif
+#if PLUGS_DEVICE
+    cJSON_AddStringToObject(pSubJson_Device,"product", "Plugs");
+#endif
 #if LIGHT_DEVICE
 	cJSON_AddStringToObject(pSubJson_Device,"product", "Light");
 #endif
@@ -234,6 +240,82 @@ switch_req_parse(const char *pValue)
     if(NULL != pJson)cJSON_Delete(pJson);
     return -1;
 }
+#endif
+#if PLUGS_DEVICE
+/******************************************************************************
+ * FunctionName : status_get
+ * Description  : set up the device status as a JSON format
+ * Parameters   : pcjson -- A pointer to a JSON object
+ * Returns      : result
+{"Response":{
+"status":0}} 
+*******************************************************************************/
+LOCAL int  
+switchs_status_get(cJSON *pcjson, const char* pname )
+{
+    uint8_t i, bits = user_plugs_count();
+    uint8_t *s;
+    cJSON * pSubJson_status = cJSON_CreateObject();
+    if(NULL == pSubJson_status){
+        printf("pSubJson_response | status creat fail\n");
+        return -1;
+    }
+
+    s = (uint8_t*)zalloc(bits + 1);
+
+    cJSON_AddItemToObject(pcjson, "plugs_status", pSubJson_status);
+    /* old style, support max 32 switch */
+    cJSON_AddNumberToObject(pSubJson_status, "plugs_num", bits);
+    cJSON_AddNumberToObject(pSubJson_status, "plugs_value", user_plugs_get_status_int());
+    /* new style, support any count switch */
+    cJSON_AddStringToObject(pSubJson_status, "plugs_value_bits", user_plugs_get_status_string(s, bits + 1));
+    free(s);
+
+    return 0;
+}
+/******************************************************************************
+ * FunctionName : status_set
+ * Description  : parse the device status parmer as a JSON format
+ * Parameters   : pcjson -- A pointer to a JSON formatted string
+ * Returns      : result
+ {"Response":
+ {"status":1 }}
+*******************************************************************************/
+LOCAL int  
+switchs_status_set(const char *pValue)
+{
+    uint8_t i;
+    cJSON * pJsonSub_status=NULL;
+    cJSON * pJsonStatus_value=NULL;
+    cJSON * pJsonStatus_num=NULL;
+    cJSON * pJsonStatus_bitValues=NULL;
+
+    cJSON * pJson =  cJSON_Parse(pValue);
+    if(NULL != pJson){
+        pJsonSub_status = cJSON_GetObjectItem(pJson, "plugs_status");
+    }
+    
+    if(NULL != pJsonSub_status){
+        pJsonStatus_bitValues = cJSON_GetObjectItem(pJsonSub_status, "plugs_value_bits");
+        if (pJsonStatus_bitValues) {
+            user_plugs_set_status_string(pJsonStatus_bitValues->valuestring, strlen(pJsonStatus_bitValues->valuestring));
+            if(NULL != pJson)cJSON_Delete(pJson);
+                return 0;
+        }
+        pJsonStatus_value = cJSON_GetObjectItem(pJsonSub_status, "plugs_value");
+        pJsonStatus_num = cJSON_GetObjectItem(pJsonSub_status, "plugs_num");
+        if(pJsonStatus_value && pJsonStatus_num){
+            user_plugs_set_status_int(pJsonStatus_num->valueint, pJsonStatus_value->valueint);
+            if(NULL != pJson)cJSON_Delete(pJson);
+            return 0;
+        }
+    }
+    
+    if (NULL != pJson)cJSON_Delete(pJson);
+    printf("switch_status_set fail\n");
+    return -1;
+}
+
 #endif
 
 #if LIGHT_DEVICE
@@ -1135,6 +1217,12 @@ json_send(struct single_conn_param *psingle_conn_param, ParmType ParmType)
             ret=switch_status_get(pcjson,"switch");
             break;
 #endif
+#if PLUGS_DEVICE
+
+        case SWITCH_STATUS:
+            ret=switchs_status_get(pcjson,"switchs");
+            break;
+#endif
         case INFOMATION:
             ret=system_info_get(pcjson,"INFOMATION");
             break;
@@ -1483,7 +1571,11 @@ webserver_recvdata_process(struct single_conn_param *psingle_conn_param, char *p
                         json_send(psingle_conn_param, SWITCH_STATUS);
                     }
 #endif
-
+#if PLUGS_DEVICE
+                    else if (strcmp(pURL_Frame->pFilename, "switchs") == 0) {
+                        json_send(psingle_conn_param, SWITCH_STATUS);
+                    }
+#endif
 #if LIGHT_DEVICE
                     else if (strcmp(pURL_Frame->pFilename, "light") == 0) {
                         json_send(psingle_conn_param, LIGHT_STATUS);
@@ -1617,7 +1709,16 @@ webserver_recvdata_process(struct single_conn_param *psingle_conn_param, char *p
                         }
                     }
 #endif
-
+#if PLUGS_DEVICE
+                    else if (strcmp(pURL_Frame->pFilename, "switchs") == 0) {
+                        if (pParseBuffer != NULL) {
+                            switchs_status_set(pParseBuffer);
+                            response_send(psingle_conn_param, true);
+                        } else {
+                            response_send(psingle_conn_param, false);
+                        }
+                    }
+#endif
 #if LIGHT_DEVICE
                     else if (strcmp(pURL_Frame->pFilename, "light") == 0) {
                         if (pParseBuffer != NULL) {
