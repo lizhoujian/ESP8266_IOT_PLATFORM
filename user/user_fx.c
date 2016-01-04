@@ -8,19 +8,28 @@
 #include "user_fx.h"
 #include "driver/uart.h"
 
-#include "FreeRTOS.h"
-#include "task.h"
-#include "queue.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "freertos/semphr.h"
+
+#define __countof(a) (sizeof(a) / sizeof(a[0]))
+
+#define TO_ASCII(half) (((half) < 10) ? ((half) + 0x30) : ((half) + 0x41 - 0xa))
+#define SWAP_BYTE(word) ((((word) >> 8) & 0xff) | (((word) << 8) & 0xff00));
+
+#define TO_HEX(c) ((((c) - 0x30) < 10) ? ((c) - 0x30) : ((c) - 0x41 + 10))
+
+typedef struct register_t
+{
+    u8 type; /* register type */
+    u32 byte_base_addr; /* base address for current */
+    u32 bit_base_addr; /* base address for current */
+    u32 (*addr)(void *r, u16 offset, bool bit_operate); /* calc address */
+    u8 addr_len; /* bytes of address */
+} register_t;
 
 #define WAIT_RECV_TIMEOUT 2000
-
-enum {
-    RECV_INIT = 0,
-    RECV_DOING,
-    RECV_DONE,
-    RECV_ERR,
-    RECV_OVERFLOW
-};
 
 typedef struct uart_event_t
 {
@@ -39,143 +48,36 @@ typedef struct uart_buf_t
 
 static xQueueHandle uart_queue_recv = NULL;
 static xSemaphoreHandle recv_buf_mutex = NULL;
-static u8 uart_recv_state = RECV_INIT;
 static uart_buf_t uart_recv_buf = {0,};
 
-static void set_recv_state(u8 s)
+static void post_event(u8 ev)
 {
-    uart_recv_state = s;
-}
-
-static void free_recv_buff(void)
-{
-    uart_buf_t *p = &uart_recv_buf;
-
-    xSemaphoreTake(uart_queue_recv, NULL);    
-    if (p->data) {
-        p->index = 0;
-        p->len = 0;
-        free(p->data);
-        p->data = NULL;
-        printf("free last recv buff.\n");
-    }
-    xSemaphoreGive(uart_queue_recv, NULL);
-}
-
-static bool alloc_recv_buff(u16 data_len)
-{
-    uart_buf_t *p = &uart_recv_buf;
-
-    xSemaphoreTake(uart_queue_recv, NULL);
-
-    p->len = 1/*STX*/ + data_len + 1/*ETX*/ + 2/*CHECKSUM*/;
-    p->data = (u8*)zalloc(p->len);
-    p->index = 0;
-
-    xSemaphoreGive(uart_queue_recv, NULL);
-
-    return p->data != NULL;
-}
-
-static void post_event(u8 e)
-{
-    uart_event_t e = {UART_EVENT_DONE,};
+    uart_event_t e = {0,};
+    e.event = ev;
     xQueueSendFromISR(uart_queue_recv, (void *)&e, NULL);
 }
 
 static void parse_buf(uart_buf_t *p, u16 len)
 {
-    u16 bytes = len;
-
-    if (bytes > 0 && 
-        (p->data[0] == NACK || 
-            p->data[0] == ACK)) {
-        set_recv_state(RECV_DONE);
-        post_event(UART_EVENT_DONE);
-    } else if (bytes > 3 && (
-        p->data[0] == STX && p->data[bytes - 3] == ETX)) {
-        set_recv_state(RECV_DONE);
-        post_event(UART_EVENT_DONE);
-    } else if (bytes >= p->len) {
-        set_recv_state(RECV_OVERFLOW);
+    if (len == p->len || p->data[0] == NACK) {
         post_event(UART_EVENT_DONE);
     }
 }
 
-static bool wait_recv_done(u16 miliseconds)
-{
-    uart_event_t e = {0,};
-
-    if ((miliseconds % (portTICK_RATE_MS) > 0) {
-        miliseconds += portTICK_RATE_MS;
-    }
-    set_recv_state(RECV_DOING);
-
-    xQueueReceive(uart_queue_recv, (void *)&e, (portTickType)(miliseconds / portTICK_RATE_MS));
-    if (e.event = UART_EVENT_DONE) {
-        return true;
-    } else {
-        printf("uart event unkown, event = %d\n", e.event);
-        return false;
-    }
-}
-
-static bool is_ack(void)
-{
-    uart_buf_t *p = &uart_recv_buf;
-    u8 ack;
-
-    xSemaphoreTake(uart_queue_recv, NULL);
-    ack = p->data[0];
-    xSemaphoreGive(uart_queue_recv, NULL);
-
-    return ack == ACK;
-}
-
-/* init response before request */
-static bool create_response(u16 data_len)
-{
-    return alloc_recv_buff(data_len);
-}
-
-static bool wait_response(u16 miliseconds)
-{
-    return wait_recv_done(miliseconds);
-}
-static void copy_response_data(u8 *out, u16 len)
-{
-    uart_buf_t *p = &uart_recv_buf;
-
-    xSemaphoreTake(uart_queue_recv, NULL);
-    memcpy(out, &p->data[1], len);
-    xSemaphoreGive(uart_queue_recv, NULL);
-}
-
-static void free_response(void)
-{
-    free_recv_buff();
-}
-
-static void insert_char(u8 c)
+static void uart_cb(u8 c)
 {
     uart_buf_t *p = &uart_recv_buf;
 
     xSemaphoreTakeFromISR(uart_queue_recv, NULL);
 
-    if (p->index < p->len) {
-        p->data[p->index] = c;
-        p->index++;
-        parse_buf(p);
+    if (p->data && p->index < p->len) {
+        p->data[p->index++] = c;
+        parse_buf(p, p->index);
     } else {
-        printf("insert char overflow/uninit???\n");
+        printf("insert char overflow or not init c=%c???\n", c);
     }
 
     xSemaphoreGiveFromISR(uart_queue_recv, NULL);
-}
-
-static void uart_cb(u8 c)
-{
-    insert_char(c);
 }
 
 static void uart_send(u8 *data, u16 len)
@@ -186,9 +88,171 @@ static void uart_send(u8 *data, u16 len)
     }
 }
 
+u8 fx_check_sum(u8 *in, u16 inLen)
+{
+    int i, sum;
+
+    sum = 0;
+    for (i = 0; i < inLen; i++) {
+        sum += in[i];
+    }
+
+    return sum & 0xff;
+}
+
+static u8 to_hex_byte(u8 *in)
+{
+    return ((TO_HEX(in[0]) << 4) & 0xf0) | ((TO_HEX(in[1]) & 0xf));
+}
+
+static void fx_ascii_to_hex(u8 *in, u8 *out, u16 inLen)
+{
+    int i;
+    for (i = 0; i < inLen; i += 2) {
+        out[i/2] = to_hex_byte(&in[i]);
+    }
+}
+
+static void to_ascii(u8 in, u8 *out)
+{
+    out[0] = TO_ASCII((in >> 4) & 0xf);
+    out[1] = TO_ASCII(in & 0xf);
+}
+
+void hex_to_ascii(u8 *in, u8 *out, u16 inLen)
+{
+    int i;
+    for (i = 0; i < inLen; i++) {
+        to_ascii(in[i], out + i * 2);
+    }
+}
+
+static void free_recv_buff(void)
+{
+    uart_buf_t *p = &uart_recv_buf;
+
+    xSemaphoreTake(uart_queue_recv, portMAX_DELAY);    
+    if (p->data) {
+        p->index = 0;
+        p->len = 0;
+        free(p->data);
+        p->data = NULL;
+        printf("free last recv buff.\n");
+    }
+    xSemaphoreGive(uart_queue_recv);
+}
+
+static bool alloc_recv_buff(u16 len)
+{
+    uart_buf_t *p = &uart_recv_buf;
+
+    xSemaphoreTake(uart_queue_recv, portMAX_DELAY);
+
+    p->len = len;
+    p->data = (u8*)zalloc(p->len);
+    p->index = 0;
+
+    xSemaphoreGive(uart_queue_recv);
+
+    return p->data != NULL;
+}
+
+static bool wait_recv_done(u16 miliseconds)
+{
+    uart_event_t e = {0,};
+
+    if ((miliseconds % (portTICK_RATE_MS)) > 0) {
+        miliseconds += portTICK_RATE_MS;
+    }
+
+    xQueueReceive(uart_queue_recv, (void *)&e, (portTickType)(miliseconds / portTICK_RATE_MS));
+    if (e.event = UART_EVENT_DONE) {
+        return true;
+    } else {
+        printf("wait recv error(timeout?), event = %d\n", e.event);
+        return false;
+    }
+}
+
+static bool is_ack(void)
+{
+    uart_buf_t *p = &uart_recv_buf;
+    u8 ack;
+
+    xSemaphoreTake(uart_queue_recv, portMAX_DELAY);
+    ack = p->data[0];
+    xSemaphoreGive(uart_queue_recv);
+
+    return ack == ACK;
+}
+
+static bool is_stx(void)
+{
+    uart_buf_t *p = &uart_recv_buf;
+    u8 stx;
+
+    xSemaphoreTake(uart_queue_recv, portMAX_DELAY);
+    stx = p->data[0];
+    xSemaphoreGive(uart_queue_recv);
+
+    return stx == STX;
+}
+
+/* init response before request */
+static bool create_response(u8 cmd, u16 data_len)
+{
+    u16 len;
+
+    xQueueReset(uart_queue_recv);
+
+    if (cmd == ACTION_READ) {
+        len = 1 + data_len * 2 + 1 + 2;
+    } else {
+        len = 1;
+    }
+
+    return alloc_recv_buff(len);
+}
+
+static bool wait_response(u16 miliseconds)
+{
+    return wait_recv_done(miliseconds);
+}
+
+static bool parse_response_data(u8 *out, u16 len)
+{
+    bool ret = false;
+    uart_buf_t *p = &uart_recv_buf;
+    u8 sum, recv_sum;
+
+    xSemaphoreTake(uart_queue_recv, portMAX_DELAY);
+
+    if ((p->index == p->len) && p->data[0] == STX && (p->index > 3 && p->data[p->index - 1 - 2] == ETX)) {
+        sum = fx_check_sum(&p->data[0], p->len - 4);
+        recv_sum = (u8)to_hex_byte(&p->data[p->index - 1 - 1]);
+        if (sum == recv_sum) {
+            fx_ascii_to_hex(&p->data[0], out, p->len - 4);
+            ret = true;
+        } else {
+            printf("response data check sum error.\n");
+        }
+    } else {
+        printf("parse response data invalid.\n");
+    }
+
+    xSemaphoreGive(uart_queue_recv);
+
+    return ret;
+}
+
+static void free_response(void)
+{
+    free_recv_buff();
+}
+
 void fx_init(void)
 {
-    uart_queue_recv = xQueueCreate(1, sizeof(os_event_t));
+    uart_queue_recv = xQueueCreate(1, sizeof(uart_event_t));
     if (uart_queue_recv) {
         recv_buf_mutex = xSemaphoreCreateMutex();
         if (recv_buf_mutex) {
@@ -203,60 +267,50 @@ void fx_init(void)
     }
 }
 
-#define TO_ASCII(half) (((half) < 10) ? ((half) + 0x30) : ((half) + 0x41 - 0xa))
-#define SWAP_BYTE(word) ((((word) >> 8) & 0xff) | (((word) << 8) & 0xff00));
-
-static u32 calc_address(register_t *r, u16 offset)
+static u32 calc_address(void *r, u16 offset, bool bit_operate)
 {
-    return r->base_addr + offset;
+    register_t *t = r;
+    return (bit_operate ? t->bit_base_addr : t->byte_base_addr) + offset;
 }
 
-static u32 calc_address2(register_t *r, u16 offset)
+static u32 calc_address2(void *r, u16 offset, bool bit_operate)
 {
-    return r->base_addr * 2 + offset;
+    register_t *t = r;
+    return (bit_operate ? t->bit_base_addr : t->byte_base_addr)  * 2 + offset;
 }
 
-static u32 calc_address3(register_t *r, u16 offset)
+static u32 calc_address3(void *r, u16 offset, bool bit_operate)
 {
-    return r->base_addr * 3 + offset;
+    register_t *t = r;
+    return (bit_operate ? t->bit_base_addr : t->byte_base_addr)  * 3 + offset;
 }
 
-static u32 swap_address(register_t *r, u32 addr)
+static u32 swap_address(void *r, u32 addr)
 {
+    register_t *t = r;
     return addr;
 }
 
-static u32 swap_address2(register_t *r, u32 addr)
+static u32 swap_address2(void *r, u32 addr)
 {
+    register_t *t = r;
     u16 addr16 = (u16)addr;
-    if (r->addr_len == 2) {
+    if (t->addr_len == 2) {
         return SWAP_BYTE(addr16);
     } else {
         return addr;
     }
 }
 
-typedef struct register_t
-{
-    u8 type; /* register type */
-    u32 byte_base_addr; /* base address for current */
-    u32 bit_base_addr; /* base address for current */
-    u32 (*byte_addr)(register_t *r, u16 offset); /* calc byte address */
-    u32 (*bit_addr)(register_t *r, u16 offset); /* calc bit address */
-    u8 addr_len; /* bytes of address */
-} register_t;
-
 static register_t registers[] = {
-    {REG_D, REG_D_BASE_ADDRESS, REG_D_BIT_BASE_ADDRESS, calc_address2, calc_address2, 2},
-    {REG_M, REG_M_BASE_ADDRESS, REG_M_BIT_BASE_ADDRESS, calc_address2, calc_address2, 2},
-    {REG_T, REG_T_BASE_ADDRESS, REG_T_BIT_BASE_ADDRESS, calc_address, calc_address, 2},
-    {REG_S, REG_S_BASE_ADDRESS, REG_S_BIT_BASE_ADDRESS, calc_address3, calc_address3, 3},
-    {REG_C, REG_C_BASE_ADDRESS, REG_C_BIT_BASE_ADDRESS, calc_address2, calc_address2, 2},
-    {REG_X, REG_X_BASE_ADDRESS, REG_X_BIT_BASE_ADDRESS, calc_address, calc_address, 2},
-    {REG_Y, REG_Y_BASE_ADDRESS, REG_Y_BIT_BASE_ADDRESS, calc_address, calc_address, 2},
+    {REG_D, REG_D_BASE_ADDRESS, REG_D_BIT_BASE_ADDRESS, calc_address2, 2},
+    {REG_M, REG_M_BASE_ADDRESS, REG_M_BIT_BASE_ADDRESS, calc_address2, 2},
+    {REG_T, REG_T_BASE_ADDRESS, REG_T_BIT_BASE_ADDRESS, calc_address, 2},
+    {REG_S, REG_S_BASE_ADDRESS, REG_S_BIT_BASE_ADDRESS, calc_address3, 3},
+    {REG_C, REG_C_BASE_ADDRESS, REG_C_BIT_BASE_ADDRESS, calc_address2, 2},
+    {REG_X, REG_X_BASE_ADDRESS, REG_X_BIT_BASE_ADDRESS, calc_address, 2},
+    {REG_Y, REG_Y_BASE_ADDRESS, REG_Y_BIT_BASE_ADDRESS, calc_address, 2},
 };
-
-#define __countof(a) (sizeof(a) / sizeof(a[0]))
 
 static register_t *find_registers(u8 addr_type)
 {
@@ -270,46 +324,18 @@ static register_t *find_registers(u8 addr_type)
     return NULL;
 }
 
-u8 fx_check_sum(u8 *in, u16 inLen)
-{
-    int i, sum;
-
-    sum = 0;
-    for (i = 0; i < inLen, i++) {
-        sum += in[i];
-    }
-
-    return sum & 0xff;
-}
-
-static void to_ascii(u8 in, u8 *out)
-{
-    out[0] = TO_ASCII((in >> 4) & 0xf);
-    out[1] = TO_ASCII(in & 0xf);
-}
-
-void hex_to_ascii(u8 *in, u8 *out, u16 inLen)
-{
-    int i;
-    u8 *p = out;
-
-    for (i = 0; i < inLen; i++) {
-        to_ascii(in[i], out + i * 2);
-    }
-}
-
-static u16 create_request(register_t *r, u8 cmd, u16 addr, u8 *data, u16 len, **req)
+static u16 create_request(register_t *r, u8 cmd, u16 addr, u8 *data, u16 len, u8 **req)
 {
     u8 *buf;
     u16 buf_len;
-    u16 addr;
+    u16 raddr;
     u8 sum;
 
     if (cmd == ACTION_FORCE_ON || cmd == ACTION_FORCE_OFF) {
-        addr = r->byte_addr(r, addr);
+        raddr = r->addr(r, addr, true);
     } else if (cmd == ACTION_READ || cmd == ACTION_WRITE) {
-        addr = r->byte_addr(r, addr);
-        addr = SWAP_BYTE(addr);
+        raddr = r->addr(r, addr, false);
+        raddr = SWAP_BYTE(addr);
     }
 
     buf_len = 1 + 1 + 4;
@@ -323,19 +349,18 @@ static u16 create_request(register_t *r, u8 cmd, u16 addr, u8 *data, u16 len, **
     if (buf) {
         buf[0] = STX;
         buf[1] = TO_ASCII(cmd);
-        hex_to_ascii((u8*)&addr, buf[2], 2); /* 4 bytes */
+        hex_to_ascii((u8*)&raddr, &buf[2], 2); /* 4 bytes */
         if (len > 0) {
-            to_ascii((u8)len, &buf[4]); /* 2 bytes */
-            hex_to_ascii(data, &buf[6], len); /* 2 * len bytes */
+            to_ascii((u8)len, &buf[6]); /* 2 bytes */
+            hex_to_ascii(data, &buf[8], len); /* (2 * len) bytes */
         }
-        buf[buf_len - 1 - 2] = ETX;        
+        buf[buf_len - 1 - 2] = ETX;
         sum = fx_check_sum(&buf[1], buf_len - 3 /* - STX - CHECKSUM */);
-        to_ascii(sum, buf[buf_len - 1 - 1]);
+        to_ascii(sum, &buf[buf_len - 1 - 1]);
 
         *req = buf;
         return buf_len;
     }
-
 
     return 0;
 }
@@ -355,9 +380,10 @@ static void free_request(u8 *data)
 bool fx_enquiry(void)
 {
     bool ret = false;
+    u8 cmd = ENQ;
 
-    create_response(0);
-    uart_send(ENQ);
+    create_response(cmd, 0);
+    uart_send(&cmd, 1);
     ret = wait_response(WAIT_RECV_TIMEOUT) && is_ack();
     free_response();
 
@@ -375,7 +401,7 @@ static bool fx_force_onoff(u8 addr_type, u16 addr, u8 cmd)
         r = find_registers(addr_type);
         if (r) {
             if ((len = create_request(r, cmd, addr, NULL, 0, &req)) > 0) {
-                create_response(0);
+                create_response(cmd, 0);
                 send_request(req, len);
                 free_request(req);
                 ret = wait_response(WAIT_RECV_TIMEOUT) && is_ack();
@@ -401,19 +427,19 @@ bool fx_read(u8 addr_type, u16 addr, u8 *out, u16 len)
 {
     register_t *r;
     u8 *req;
-    u16 len;
+    u16 rlen;
     bool ret = false;
 
     if (fx_enquiry()) {
         r = find_registers(addr_type);
         if (r) {
-            if ((len = create_request(r, ACTION_READ, addr, NULL, 0, &req)) > 0) {
-                create_response(0);
+            if ((rlen = create_request(r, ACTION_READ, addr, NULL, 0, &req)) > 0) {
+                create_response(ACTION_READ, len);
                 send_request(req, len);
                 free_request(req);
-                ret = wait_response(WAIT_RECV_TIMEOUT) && is_ack();
+                ret = wait_response(WAIT_RECV_TIMEOUT) && is_stx();
                 if (ret) {
-                    copy_response_data(out, len);
+                    ret = parse_response_data(out, len);
                 }
                 free_response();
             }
@@ -423,18 +449,18 @@ bool fx_read(u8 addr_type, u16 addr, u8 *out, u16 len)
     return ret;
 }
 
-static bool fx_write(u8 addr_type, u16 addr)
+static bool fx_write(u8 addr_type, u16 addr, u8 *data, u16 len)
 {
     register_t *r;
     u8 *req;
-    u16 len;
+    u16 rlen;
     bool ret = false;
 
     if (fx_enquiry()) {
         r = find_registers(addr_type);
         if (r) {
-            if ((len = create_request(r, ACTION_WRITE, addr, NULL, 0, &req)) > 0) {
-                create_response(0);
+            if ((rlen = create_request(r, ACTION_WRITE, addr, data, len, &req)) > 0) {
+                create_response(ACTION_WRITE, 0);
                 send_request(req, len);
                 free_request(req);
                 ret = wait_response(WAIT_RECV_TIMEOUT) && is_ack();

@@ -155,7 +155,7 @@ uart_task(void *pvParameters)
                         printf("%c", e.param);
                     }
                     break;
-                case 0;
+                case 0:
                     printf("uart recv thread timeout?.\n");
                     break;
                 default:
