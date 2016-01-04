@@ -16,8 +16,10 @@
 
 #include "driver/uart.h"
 
+static uart_recv_cb recv_cb = (uart_recv_cb)NULL;
+
 enum {
-    UART_EVENT_RX_CHAR,
+    UART_EVENT_RX_CHAR = 100,
     UART_EVENT_MAX
 };
 
@@ -135,19 +137,29 @@ uart_config(uint8 uart_no, UartDevice *uart)
 }
 #endif
 
+
+
 LOCAL void  
 uart_task(void *pvParameters)
 {
     os_event_t e;
 
     for (;;) {
+        memset(&e, 0, sizeof(e));
         if (xQueueReceive(xQueueUart, (void *)&e, (portTickType)portMAX_DELAY)) {
             switch (e.event) {
                 case UART_EVENT_RX_CHAR:
-                    printf("%c", e.param);
+                    if (recv_cb != NULL) {
+                        (*recv_cb)(e.param); // call receive callback
+                    } else {
+                        printf("%c", e.param);
+                    }
                     break;
-
+                case 0;
+                    printf("uart recv thread timeout?.\n");
+                    break;
                 default:
+                    printf("unkown recv thread event.\n");
                     break;
             }
         }
@@ -419,3 +431,34 @@ uart_init_new(void)
     */
 
 }
+
+void uart_init_for_fx(void)
+{
+    UART_WaitTxFifoEmpty(UART0);
+
+    UART_ConfigTypeDef uart_config;
+    uart_config.baud_rate    = BIT_RATE_9600;
+    uart_config.data_bits     = UART_WordLength_7b;
+    uart_config.parity          = USART_Parity_Even;
+    uart_config.stop_bits     = USART_StopBits_1;
+    uart_config.flow_ctrl      = USART_HardwareFlowControl_None;
+    uart_config.UART_RxFlowThresh = 120;
+    uart_config.UART_InverseMask = UART_None_Inverse;
+    UART_ParamConfig(UART0, &uart_config);
+
+    UART_IntrConfTypeDef uart_intr;
+    uart_intr.UART_IntrEnMask = UART_RXFIFO_TOUT_INT_ENA | UART_FRM_ERR_INT_ENA | UART_RXFIFO_FULL_INT_ENA | UART_TXFIFO_EMPTY_INT_ENA;
+    uart_intr.UART_RX_FifoFullIntrThresh = 10;
+    uart_intr.UART_RX_TimeOutIntrThresh = 2;
+    uart_intr.UART_TX_FifoEmptyIntrThresh = 20;
+    UART_IntrConfig(UART0, &uart_intr);
+
+    UART_intr_handler_register(uart0_rx_intr_handler,NULL);
+    ETS_UART_INTR_ENABLE();
+}
+
+void uart_set_recv_cb(uart_recv_cb cb)
+{
+    recv_cb = cb;
+}
+

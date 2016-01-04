@@ -108,4 +108,8 @@ void UART_SetFlowCtrl(UART_Port uart_no, UART_HwFlowCtrl flow_ctrl, uint8 rx_thr
 void UART_SetLineInverse(UART_Port uart_no, UART_LineLevelInverse inverse_mask) ;
 void uart_init_new(void);
 
+typedef void (*uart_recv_cb)(u8 c);
+void uart_init_for_fx(void);
+void uart_set_recv_cb(uart_recv_cb cb);
+
 #endif
