@@ -31,7 +31,7 @@ typedef struct _os_event_ {
 xTaskHandle xUartTaskHandle;
 xQueueHandle xQueueUart;
 
-LOCAL STATUS
+ STATUS
 uart_tx_one_char(uint8 uart, uint8 TxChar)
 {
     while (true) {
@@ -90,11 +90,20 @@ uart_rx_intr_handler_ssc(void)
 
     WRITE_PERI_REG(UART_INT_CLR(uart_no), UART_RXFIFO_FULL_INT_CLR);
 
+#if 1
     e.event = UART_EVENT_RX_CHAR;
     e.param = RcvChar;
 
     xQueueSendFromISR(xQueueUart, (void *)&e, &xHigherPriorityTaskWoken);
     portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
+#else
+    if (recv_cb != NULL) {
+        (*recv_cb)(RcvChar); // call receive callback
+        printf("%d", RcvChar);
+    } else {
+        printf("%c", e.param);
+    }
+#endif
 }
 
 #if 0
@@ -144,6 +153,8 @@ uart_task(void *pvParameters)
 {
     os_event_t e;
 
+    printf("uart task enter.\n");
+
     for (;;) {
         memset(&e, 0, sizeof(e));
         if (xQueueReceive(xQueueUart, (void *)&e, (portTickType)portMAX_DELAY)) {
@@ -151,6 +162,7 @@ uart_task(void *pvParameters)
                 case UART_EVENT_RX_CHAR:
                     if (recv_cb != NULL) {
                         (*recv_cb)(e.param); // call receive callback
+                        printf("%d", e.param);
                     } else {
                         printf("%c", e.param);
                     }
@@ -402,7 +414,7 @@ uart_init_new(void)
     UART_WaitTxFifoEmpty(UART1);
 
     UART_ConfigTypeDef uart_config;
-    uart_config.baud_rate    = BIT_RATE_74880;
+    uart_config.baud_rate    = BIT_RATE_115200;
     uart_config.data_bits     = UART_WordLength_8b;
     uart_config.parity          = USART_Parity_None;
     uart_config.stop_bits     = USART_StopBits_1;
@@ -416,7 +428,7 @@ uart_init_new(void)
     uart_intr.UART_RX_FifoFullIntrThresh = 10;
     uart_intr.UART_RX_TimeOutIntrThresh = 2;
     uart_intr.UART_TX_FifoEmptyIntrThresh = 20;
-    UART_IntrConfig(UART0, &uart_intr);
+    //UART_IntrConfig(UART0, &uart_intr);
 
     UART_SetPrintPort(UART0);
     UART_intr_handler_register(uart0_rx_intr_handler,NULL);
@@ -429,15 +441,16 @@ uart_init_new(void)
     UART_SetBaudrate(UART0,74880);
     UART_SetFlowCtrl(UART0,USART_HardwareFlowControl_None,0);
     */
-
 }
 
 void uart_init_for_fx(void)
 {
     UART_WaitTxFifoEmpty(UART0);
 
+    ETS_UART_INTR_DISABLE();
+
     UART_ConfigTypeDef uart_config;
-    uart_config.baud_rate    = BIT_RATE_9600;
+    uart_config.baud_rate    = BIT_RATE_9600 + 1;
     uart_config.data_bits     = UART_WordLength_7b;
     uart_config.parity          = USART_Parity_Even;
     uart_config.stop_bits     = USART_StopBits_1;
@@ -451,10 +464,15 @@ void uart_init_for_fx(void)
     uart_intr.UART_RX_FifoFullIntrThresh = 10;
     uart_intr.UART_RX_TimeOutIntrThresh = 2;
     uart_intr.UART_TX_FifoEmptyIntrThresh = 20;
-    UART_IntrConfig(UART0, &uart_intr);
+    //UART_IntrConfig(UART0, &uart_intr);
 
-    UART_intr_handler_register(uart0_rx_intr_handler,NULL);
+    UART_SetPrintPort(UART1);
+    UART_intr_handler_register(uart_rx_intr_handler_ssc, NULL);
+    //UART_intr_handler_register(uart0_rx_intr_handler, NULL);
     ETS_UART_INTR_ENABLE();
+
+    xQueueUart = xQueueCreate(32, sizeof(os_event_t));
+    xTaskCreate(uart_task, (uint8 const *)"uTask", 512, NULL, tskIDLE_PRIORITY + 2, &xUartTaskHandle);
 }
 
 void uart_set_recv_cb(uart_recv_cb cb)

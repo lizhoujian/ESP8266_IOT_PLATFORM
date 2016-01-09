@@ -5,6 +5,7 @@
 
 #ifndef __UART_H__
 #define __UART_H__
+#include "c_types.h"
 
 #define ETS_UART_INTR_ENABLE()  _xt_isr_unmask(1 << ETS_UART_INUM)
 #define ETS_UART_INTR_DISABLE() _xt_isr_mask(1 << ETS_UART_INUM)
@@ -107,6 +108,8 @@ void UART_SetBaudrate(UART_Port uart_no, uint32 baud_rate);
 void UART_SetFlowCtrl(UART_Port uart_no, UART_HwFlowCtrl flow_ctrl, uint8 rx_thresh);
 void UART_SetLineInverse(UART_Port uart_no, UART_LineLevelInverse inverse_mask) ;
 void uart_init_new(void);
+
+STATUS uart_tx_one_char(uint8 uart, uint8 TxChar);
 
 typedef void (*uart_recv_cb)(u8 c);
 void uart_init_for_fx(void);

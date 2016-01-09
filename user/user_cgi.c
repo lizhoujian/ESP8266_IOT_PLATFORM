@@ -32,6 +32,9 @@
 #if LIGHT_DEVICE
 #include "user_light.h"
 #endif
+#if FX2N_DEVICE
+#include "user_fx2n.h"
+#endif
 
 #include "upgrade.h"
 
@@ -132,6 +135,9 @@ system_info_get(cJSON *pcjson, const char* pname )
 #if PLUGS_DEVICE
     cJSON_AddStringToObject(pSubJson_Device,"product", "Plugs");
 #endif
+#if FX2N_DEVICE
+    cJSON_AddStringToObject(pSubJson_Device,"product", "fx2n");
+#endif
 #if LIGHT_DEVICE
     cJSON_AddStringToObject(pSubJson_Device,"product", "Light");
 #endif
@@ -175,7 +181,7 @@ switch_status_get(cJSON *pcjson, const char* pname )
  {"status":1 }}
 *******************************************************************************/
 LOCAL int  
-switch_status_set(const char *pValue)
+switch_status_set(cJSON *pcjson, const char *pValue)
 {
     cJSON * pJsonSub=NULL;
     cJSON * pJsonSub_status=NULL;
@@ -244,7 +250,7 @@ switchs_status_get(cJSON *pcjson, const char* pname )
  {"status":1 }}
 *******************************************************************************/
 LOCAL int  
-switchs_status_set(const char *pValue)
+switchs_status_set(cJSON *pcjson, const char *pValue)
 {
     uint8_t i;
     cJSON * pJsonSub_status=NULL;
@@ -280,6 +286,148 @@ switchs_status_set(const char *pValue)
 
 #endif
 
+#if FX2N_DEVICE
+static void hex_string_to_byte(u8 *in, u8 **out, u8 len)
+{
+    int i;
+    u8 *bytes;
+    u8 dst[5] = {0,};
+
+    bytes = (u8*)zalloc(len);
+    if (!bytes) {
+        return;
+    }
+
+    for (i = 0; i < len; i++) {
+        strcpy(dst, "0X");
+        strncat(dst, &in[i * 2], 2);
+        bytes[i]= (u8)strtol(dst, NULL, 16);
+    }
+
+    *out = bytes;
+}
+static void byte_to_hex_string(u8 *in, u8 **out, u8 len)
+{
+    int i;
+    u8 *bytes;
+    u8 dst[5] = {0,};
+
+    bytes = (u8*)zalloc(len * 2 + 1);
+    if (!bytes) {
+        return;
+    }
+
+    for (i = 0; i < len; i++) {
+        sprintf(bytes + i * 2, "%02x", in[i]);
+    }
+
+    *out = bytes;
+}
+
+/******************************************************************************
+ * FunctionName : status_get
+ * Description  : set up the device status as a JSON format
+ * Parameters   : pcjson -- A pointer to a JSON object
+ * Returns      : result
+{"Response":{
+"status":0}} 
+*******************************************************************************/
+LOCAL int  
+fx2n_status_get(cJSON *pcjson, const char* pname )
+{
+    return 0;
+}
+/******************************************************************************
+ * FunctionName : status_set
+ * Description  : parse the device status parmer as a JSON format
+ * Parameters   : pcjson -- A pointer to a JSON formatted string
+ * Returns      : result
+ {"Response":
+ {"status":1 }}
+*******************************************************************************/
+LOCAL int  
+fx2n_status_set(cJSON *pcjson, const char *pValue)
+{
+    uint8_t i;
+    cJSON * pSub;
+    u8 cmd = 0xff, addr_type = 0;
+    u16 addr = 0;
+    u8 *data = NULL;
+    u8 *bytes = NULL;
+    u8 *out = NULL;
+    u8 *hexString = NULL;
+    u8 len = 0;
+    u8 ret = false;
+
+    printf("fx2n post value: %s\n", pValue);    
+
+    cJSON * pJson =  cJSON_Parse(pValue);
+    if (NULL != pJson) {
+        pSub = cJSON_GetObjectItem(pJson, "cmd");
+        if (pSub) {
+            cmd = pSub->valueint;
+        }
+        pSub = cJSON_GetObjectItem(pJson, "addr_type");
+        if (pSub) {
+            addr_type = pSub->valueint;
+        }
+        pSub = cJSON_GetObjectItem(pJson, "addr");
+        if (pSub) {
+            addr = pSub->valueint;
+        }
+        pSub = cJSON_GetObjectItem(pJson, "len");
+        if (pSub) {
+            len = pSub->valueint;
+        }
+        pSub = cJSON_GetObjectItem(pJson, "data");
+        if (pSub && pSub->valuestring) {
+                hex_string_to_byte(pSub->valuestring, &bytes, len);
+        }
+    }
+
+    printf("fx2n request: %d, %d, %d \n", cmd, addr_type, addr);
+
+    if (cmd == ENQ) {
+        ret = fx_enquiry();
+    } else if (cmd == ACTION_FORCE_ON) {
+        ret = fx_force_on(addr_type, addr);
+    } else if (cmd == ACTION_FORCE_OFF) {
+        ret = fx_force_off(addr_type, addr);
+    } else if (cmd == ACTION_READ) {
+        out = (u8*)zalloc(len);
+        if (out) {
+            ret = fx_read(addr_type, addr, out, len);
+        }
+    } else if (cmd == ACTION_WRITE) {
+        if (bytes) {
+            ret = fx_write(addr_type, addr, bytes, len);
+        }
+    } else {
+        ret = false;
+    }
+
+    cJSON_AddNumberToObject(pcjson, "result", ret);
+    if (ret && out) {
+        byte_to_hex_string(out, &hexString, len);
+        if (hexString) {
+            cJSON_AddStringToObject(pcjson, "value", hexString);
+            free(hexString);
+        }
+    }
+
+    if (out) {
+        free(out);
+    }
+    if (bytes) {
+        free(bytes);
+    }
+
+    if (NULL != pJson)cJSON_Delete(pJson);
+    printf("fx2n_status_set ok\n");
+    return 2; // for json return
+}
+
+#endif
 #if LIGHT_DEVICE
 /******************************************************************************
  * FunctionName : light_status_get
@@ -326,7 +474,7 @@ light_status_get(cJSON *pcjson, const char* pname )
 *******************************************************************************/
 
 LOCAL int  
-light_status_set(const char *pValue)
+light_status_set(cJSON *pcjson, const char *pValue)
 {
     static uint32 r,g,b,cw,ww,period;
     period = 1000;
@@ -467,7 +615,7 @@ light_status_set(const char *pValue)
 
 #if SENSOR_DEVICE
 LOCAL int  
-user_set_sleep(const char *pValue)
+user_set_sleep(cJSON *pcjson, const char *pValue)
 {
     printf("user_set_sleep %s \n", pValue);
     
@@ -475,7 +623,7 @@ user_set_sleep(const char *pValue)
 }
 #else
 LOCAL int  
-user_set_reboot(const char *pValue)
+user_set_reboot(cJSON *pcjson, const char *pValue)
 {
     printf("user_set_reboot %s \n", pValue);
     
@@ -485,7 +633,7 @@ user_set_reboot(const char *pValue)
 
 
 LOCAL int  
-system_status_reset(const char *pValue)
+system_status_reset(cJSON *pcjson, const char *pValue)
 {
     printf("system_status_reset %s \n", pValue);
     
@@ -493,7 +641,7 @@ system_status_reset(const char *pValue)
 }
 
 LOCAL int  
-user_upgrade_start(const char *pValue)
+user_upgrade_start(cJSON *pcjson, const char *pValue)
 {
     printf("user_upgrade_start %s \n", pValue);
     
@@ -501,7 +649,7 @@ user_upgrade_start(const char *pValue)
 }
 
 LOCAL int  
-user_upgrade_reset(const char *pValue)
+user_upgrade_reset(cJSON *pcjson, const char *pValue)
 {
     printf("user_upgrade_reset %s \n", pValue);
     
@@ -733,7 +881,7 @@ wifi_info_get(cJSON *pcjson,const char* pname)
  * {"Request":{"Station":{"Connect_Station":{"token":"u6juyl9t6k4qdplgl7dg7m90x96264xrzse6mx1i"}}}}
 *******************************************************************************/
 LOCAL int  
-wifi_info_set(const char* pValue)
+wifi_info_set(cJSON *pcjson, const char* pValue)
 {
     cJSON * pJson;
     cJSON * pJsonSub;
@@ -1002,7 +1150,7 @@ connect_status_get(cJSON *pcjson, const char* pname )
 
 
 typedef int (* cgigetCallback)(cJSON *pcjson, const char* pchar);
-typedef int (* cgisetCallback)(const char* pchar);
+typedef int (* cgisetCallback)(cJSON *pcjson, const char* pchar);
 
 typedef struct {
     const char *file;
@@ -1018,6 +1166,8 @@ const EspCgiApiEnt espCgiApiNodes[]={
     {"config", "switchs", switchs_status_get,switchs_status_set},
 #elif LIGHT_DEVICE
     {"config", "light", light_status_get,light_status_set},
+#elif FX2N_DEVICE
+    {"config", "fx2n", NULL, fx2n_status_set},
 #endif
     
 #if SENSOR_DEVICE
@@ -1063,24 +1213,42 @@ int   cgiEspApi(HttpdConnData *connData) {
     if (espCgiApiNodes[i].cmd==NULL) {
         //Not found
         len=sprintf(pbuf, "{\n \"status\": \"404 Not Found\"\n }\n");
-        //printf("Resp %s\n", pbuf);
+        printf("Resp %s\n", pbuf);
         httpdSend(connData, pbuf, len);
     } else {
         if (connData->requestType==HTTPD_METHOD_POST) {
             //Found, req is using POST
-            //printf("post cmd found %s",espCgiApiNodes[i].cmd);
+            printf("post cmd found %s\n",espCgiApiNodes[i].cmd);
+            pcjson=cJSON_CreateObject();
+            if(NULL == pcjson) {
+                printf(" ERROR! cJSON_CreateObject fail!\n");
+                return HTTPD_CGI_DONE;
+            }
             if(NULL != espCgiApiNodes[i].set){
-                espCgiApiNodes[i].set(connData->post->buff);
+                ret = espCgiApiNodes[i].set(pcjson, connData->post->buff);
             }
             
             //ToDo: Use result of json parsing code somehow
-            len=sprintf(pbuf, "{\n \"status\": \"ok\"\n }\n");
-            httpdSend(connData, pbuf, len);
-            
+            if (ret != 2) { // for old response
+                len=sprintf(pbuf, "{\n \"status\": \"ok\"\n }\n");
+                httpdSend(connData, pbuf, len);
+            } else {
+                pchar = cJSON_Print(pcjson);
+                len = strlen(pchar);
+                printf("Resp %s\n", pchar);
+                httpdSend(connData, pchar, len);
+                if (pcjson) {
+                    cJSON_Delete(pcjson);
+                }
+                if (pchar) {
+                    free(pchar);
+                    pchar=NULL;
+                }
+            }
         } else {
             //Found, req is using GET
         
-            //printf("get cmd found %s\n",espCgiApiNodes[i].cmd);
+            printf("get cmd found %s\n",espCgiApiNodes[i].cmd);
             pcjson=cJSON_CreateObject();
             if(NULL == pcjson) {
                 printf(" ERROR! cJSON_CreateObject fail!\n");
@@ -1090,7 +1258,7 @@ int   cgiEspApi(HttpdConnData *connData) {
             if(ret == 0){
                 pchar = cJSON_Print(pcjson);
                 len = strlen(pchar);
-                //printf("Resp %s\n", pchar);
+                printf("Resp %s\n", pchar);
                 httpdSend(connData, pchar, len);
             }
             

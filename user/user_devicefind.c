@@ -39,6 +39,8 @@ const char *device_find_request = "Are You Espressif IOT Smart Device?";
 const char *device_find_response_ok = "I'm Plug.";
 #elif PLUGS_DEVICE
 const char *device_find_response_ok = "I'm Plugs.";
+#elif FX2N_DEVICE
+const char *device_find_response_ok = "I'm fx2n.";
 #elif LIGHT_DEVICE
 const char *device_find_response_ok = "I'm Light.";
 #elif SENSOR_DEVICE

@@ -53,7 +53,12 @@
 #define RESPONSE_FRAME  "{\"status\": 200, \"datapoint\": {\"x\": %d,\"y\": %d,\"z\":\"%s\"}, \"nonce\": %d, \"deliver_to_device\": true}\n"
 #define FIRST_FRAME     "{\"nonce\": %d, \"path\": \"/v1/device/identify\", \"method\": \"GET\",\"meta\": {\"Authorization\": \"token %s\"}}\n"
 #endif
+#if FX2N_DEVICE
+#include "user_fx2n.h"
 
+#define RESPONSE_FRAME  "{\"status\": 200, \"datapoint\": {\"x\": %d,\"y\": %d,\"z\":\"%s\"}, \"nonce\": %d, \"deliver_to_device\": true}\n"
+#define FIRST_FRAME     "{\"nonce\": %d, \"path\": \"/v1/device/identify\", \"method\": \"GET\",\"meta\": {\"Authorization\": \"token %s\"}}\n"
+#endif
 #if LIGHT_DEVICE
 #include "user_light.h"
 
@@ -61,7 +66,7 @@
 #define FIRST_FRAME     "{\"nonce\": %d, \"path\": \"/v1/device/identify\", \"method\": \"GET\",\"meta\": {\"Authorization\": \"token %s\"}}\n"
 #endif
 
-#if PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE
+#if PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE || FX2N_DEVICE
 #define BEACON_FRAME    "{\"path\": \"/v1/ping/\", \"method\": \"POST\",\"meta\": {\"Authorization\": \"token %s\"}}\n"
 #define RPC_RESPONSE_FRAME  "{\"status\": 200, \"nonce\": %d, \"deliver_to_device\": true}\n"
 #define TIMER_FRAME     "{\"body\": {}, \"get\":{\"is_humanize_format_simple\":\"true\"},\"meta\": {\"Authorization\": \"Token %s\"},\"path\": \"/v1/device/timers/\",\"post\":{},\"method\": \"GET\"}\n"
@@ -122,7 +127,7 @@ LOCAL os_timer_t client_timer;
  *                pdata --
  * Returns      : none
 *******************************************************************************/
-#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE || FX2N_DEVICE)
 
 void  
 smartconfig_done(sc_status status, void *pdata)
@@ -381,6 +386,8 @@ user_esp_platform_get_info( struct client_conn_param *pclient_param, uint8 *pbuf
         c = user_plugs_count();
         value_string = (char*)zalloc(c + 1);
         sprintf(pbuf, RESPONSE_FRAME, user_plugs_get_status_int(), c, user_plugs_get_status_string(value_string, c + 1), nonce);
+#elif FX2N_DEVICE
+        sprintf(pbuf, RESPONSE_FRAME, 0, 0, " ", nonce);
 #elif LIGHT_DEVICE
         uint32 white_val;
         white_val = (PWM_CHANNEL>LIGHT_COLD_WHITE?user_light_get_duty(LIGHT_COLD_WHITE):0);
@@ -473,7 +480,8 @@ user_esp_platform_set_info( struct client_conn_param *pclient_param, uint8 *pbuf
             free(pdata);
         }
     }
-    
+#elif FX2N_DEVICE
+    printf("fx2n request %s\n", pbuffer);
 #elif LIGHT_DEVICE
     char *pstr = NULL;
     char *pdata = NULL;
@@ -619,7 +627,7 @@ user_esp_platform_discon(struct client_conn_param* pclient_param)
 {
     ESP_DBG("user_esp_platform_discon\n");
 
-#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE || FX2N_DEVICE)
     user_link_led_output(LED_OFF);
 #endif
 
@@ -723,7 +731,7 @@ user_esp_platform_sent(struct client_conn_param *pclient_param)
     }
 }
 
-#if PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE
+#if PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE || FX2N_DEVICE
 /******************************************************************************
  * FunctionName : user_esp_platform_sent_beacon
  * Description  : sent beacon frame for connection with the host is activate
@@ -776,7 +784,7 @@ user_platform_rpc_set_rsp(struct client_conn_param *pclient_param, int nonce)
     }
 
     sprintf(pbuf, RPC_RESPONSE_FRAME, nonce);
-    ESP_DBG("%s\n", pbuf);
+    ESP_DBG("esp rpc set rsp: %s\n", pbuf);
 #ifdef CLIENT_SSL_ENABLE
     ssl_write(pclient_param->ssl, pbuf, strlen(pbuf));
 #else
@@ -799,7 +807,7 @@ user_platform_timer_get(struct client_conn_param *pclient_param)
     memcpy(devkey, esp_param.devkey, 40);
 
     sprintf(pbuf, TIMER_FRAME, devkey);
-    ESP_DBG("%s\n", pbuf);
+    ESP_DBG("esp timer get: %s\n", pbuf);
 #ifdef CLIENT_SSL_ENABLE
     ssl_write(pclient_param->ssl, pbuf, strlen(pbuf));
 #else
@@ -986,7 +994,7 @@ user_esp_platform_data_process(struct client_conn_param *pclient_param, char *pu
                 device_status = DEVICE_ACTIVE_FAIL;
             }
         }
-#if (PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE || FX2N_DEVICE)
         else if ((pstr = (char *)strstr(pbuffer, "\"action\": \"sys_upgrade\"")) != NULL) {
             if ((pstr = (char *)strstr(pbuffer, "\"version\":")) != NULL) {
                 
@@ -1047,11 +1055,9 @@ user_esp_platform_data_process(struct client_conn_param *pclient_param, char *pu
         }
 #endif
         else if ((pstr = (char *)strstr(pbuffer, "device")) != NULL) {
-#if PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE
+#if PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE || FX2N_DEVICE
             user_platform_timer_get(pclient_param);
-#if PLUGS_DEVICE
-            printf("plugs data_process %s\n%s\n", pbuffer, pclient_param);
-#endif
+            printf("esp data_process %s\n%s\n", pbuffer, pclient_param);
 #elif SENSOR_DEVICE
 
 #endif
@@ -1131,7 +1137,7 @@ user_esp_platform_connected(struct client_conn_param *pclient_param)
 #endif
     }
 
-#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE || FX2N_DEVICE)
     user_link_led_output(LED_ON);
 #endif
 }
@@ -1533,6 +1539,8 @@ user_esp_platform_maintainer(void *pvParameters)
     user_plug_init();
 #elif PLUGS_DEVICE
     user_plugs_init();
+#elif FX2N_DEVICE
+    user_fx2n_init();
 #elif LIGHT_DEVICE
 	user_light_init();
 #elif SENSOR_DEVICE
@@ -1550,7 +1558,7 @@ user_esp_platform_maintainer(void *pvParameters)
         /*device power on with stationap mode defaultly, neednt config again*/
         //user_platform_stationap_enable();
         printf("enter softap+station mode\n");
-#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE || FX2N_DEVICE)
         user_link_led_output(LED_ON);//gpio 12
 #endif
         //for cloud test only
@@ -1614,7 +1622,7 @@ user_esp_platform_maintainer(void *pvParameters)
             break;
         }
 
-#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE || FX2N_DEVICE)
         //chenck ip or DNS, led start blinking
         if(wifi_get_opmode()==STATION_MODE)user_link_led_output(LED_5HZ);
 #endif
@@ -1812,7 +1820,7 @@ user_esp_platform_maintainer(void *pvParameters)
 #endif
                 }
             }
-#if (PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE)
+#if (PLUG_DEVICE || PLUGS_DEVICE || LIGHT_DEVICE || FX2N_DEVICE)
             else{
                 //start the tmeout counter,once it reach the beacon time,send the beacon and wait response,
                 wifi_get_ip_info(STATION_IF, &sta_ipconfig);

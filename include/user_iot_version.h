@@ -18,10 +18,11 @@
 #define device_type       23701
 #elif PLUGS_DEVICE
 #define device_type       47446
+#elif FX2N_DEVICE
+#define device_type       47446
 #elif SENSOR_DEVICE
 #define device_type       12335
 #endif
-
 
 #define ONLINE_UPGRADE    0
 #define LOCAL_UPGRADE     0

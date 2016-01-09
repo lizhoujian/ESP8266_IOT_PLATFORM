@@ -22,6 +22,9 @@
 #if PLUGS_DEVICE
 #include "user_plugs.h"
 #endif
+#if FX2N_DEVICE
+#include "user_fx2n.h"
+#endif
 #if LIGHT_DEVICE
 #include "user_light.h"
 #endif
@@ -146,6 +149,9 @@ system_info_get(cJSON *pcjson, const char* pname )
 #endif
 #if PLUGS_DEVICE
     cJSON_AddStringToObject(pSubJson_Device,"product", "Plugs");
+#endif
+#if FX2N_DEVICE
+    cJSON_AddStringToObject(pSubJson_Device,"product", "fx2n");
 #endif
 #if LIGHT_DEVICE
 	cJSON_AddStringToObject(pSubJson_Device,"product", "Light");
@@ -318,6 +324,41 @@ switchs_status_set(const char *pValue)
 
 #endif
 
+#if FX2N_DEVICE
+/******************************************************************************
+ * FunctionName : status_get
+ * Description  : set up the device status as a JSON format
+ * Parameters   : pcjson -- A pointer to a JSON object
+ * Returns      : result
+{"Response":{
+"status":0}} 
+*******************************************************************************/
+LOCAL int  
+fx2n_status_get(cJSON *pcjson, const char* pname )
+{
+
+    return 0;
+}
+/******************************************************************************
+ * FunctionName : status_set
+ * Description  : parse the device status parmer as a JSON format
+ * Parameters   : pcjson -- A pointer to a JSON formatted string
+ * Returns      : result
+ {"Response":
+ {"status":1 }}
+*******************************************************************************/
+LOCAL int  
+fx2n_status_set(const char *pValue)
+{
+    cJSON * pJson =  cJSON_Parse(pValue);
+
+    if (NULL != pJson)cJSON_Delete(pJson);
+    printf("switch_status_set fail\n");
+
+    return -1;
+}
+
+#endif
 #if LIGHT_DEVICE
 /******************************************************************************
  * FunctionName : light_status_get
@@ -1223,6 +1264,12 @@ json_send(struct single_conn_param *psingle_conn_param, ParmType ParmType)
             ret=switchs_status_get(pcjson,"switchs");
             break;
 #endif
+#if FX2N_DEVICE
+
+        case SWITCH_STATUS:
+            ret=fx2n_status_get(pcjson,"fx2n");
+            break;
+#endif
         case INFOMATION:
             ret=system_info_get(pcjson,"INFOMATION");
             break;
@@ -1576,6 +1623,11 @@ webserver_recvdata_process(struct single_conn_param *psingle_conn_param, char *p
                         json_send(psingle_conn_param, SWITCH_STATUS);
                     }
 #endif
+#if FX2N_DEVICE
+                    else if (strcmp(pURL_Frame->pFilename, "fx2n") == 0) {
+                        json_send(psingle_conn_param, SWITCH_STATUS);
+                    }
+#endif
 #if LIGHT_DEVICE
                     else if (strcmp(pURL_Frame->pFilename, "light") == 0) {
                         json_send(psingle_conn_param, LIGHT_STATUS);
@@ -1713,6 +1765,16 @@ webserver_recvdata_process(struct single_conn_param *psingle_conn_param, char *p
                     else if (strcmp(pURL_Frame->pFilename, "switchs") == 0) {
                         if (pParseBuffer != NULL) {
                             switchs_status_set(pParseBuffer);
+                            response_send(psingle_conn_param, true);
+                        } else {
+                            response_send(psingle_conn_param, false);
+                        }
+                    }
+#endif
+#if FX2N_DEVICE
+                    else if (strcmp(pURL_Frame->pFilename, "fx2n") == 0) {
+                        if (pParseBuffer != NULL) {
+                            fx2n_status_set(pParseBuffer);
                             response_send(psingle_conn_param, true);
                         } else {
                             response_send(psingle_conn_param, false);
