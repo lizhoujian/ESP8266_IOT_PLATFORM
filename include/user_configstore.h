@@ -6,23 +6,25 @@
 
 #define CONFIG_MAC_CNT 16
 
-typedef struct {
-	uint32_t r;
-	uint32_t g;
-	uint32_t b;
-	uint32_t cw;
-	uint32_t ww;
+typedef struct
+{
+    uint32_t r;
+    uint32_t g;
+    uint32_t b;
+    uint32_t cw;
+    uint32_t ww;
 } LedCol;
 
 
-typedef struct {
-	uint8_t chsum;
-	uint8_t seq;
-	uint8_t pad;
-//	uint8_t wifiChan;
-	LedCol bval[5];
-//	LampMacType macData[CONFIG_MAC_CNT];
-	int wlanChannel[CONFIG_MAC_CNT];
+typedef struct
+{
+    uint8_t chsum;
+    uint8_t seq;
+    uint8_t pad;
+    //	uint8_t wifiChan;
+    LedCol bval[5];
+    //	LampMacType macData[CONFIG_MAC_CNT];
+    int wlanChannel[CONFIG_MAC_CNT];
 } MyConfig;
 
 extern MyConfig myConfig;

@@ -29,7 +29,8 @@
 
 #define PLUG_STATUS_OUTPUT(pin, on)     GPIO_OUTPUT_SET(pin, on)
 
-enum {
+enum
+{
     LED_OFF = 0,
     LED_ON  = 1,
     LED_1HZ,
@@ -38,7 +39,8 @@ enum {
 };
 
 #define MAX_SWITCH_SOCKET 32
-struct plugs_saved_param {
+struct plugs_saved_param
+{
     uint8_t status[MAX_SWITCH_SOCKET];
     uint32_t pad[1];
 };

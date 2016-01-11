@@ -45,7 +45,8 @@ void uart_on_recv_char(unsigned char c);
 #define ACTION_FORCE_OFF 0x8
 
 // register type
-enum {
+enum
+{
     REG_D = 0,
     REG_M,
     REG_T,

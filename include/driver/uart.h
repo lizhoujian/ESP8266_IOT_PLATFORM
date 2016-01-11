@@ -12,36 +12,42 @@
 #define UART_INTR_MASK          0x1ff
 #define UART_LINE_INV_MASK      (0x3f<<19)
 
-typedef enum {
+typedef enum
+{
     UART_WordLength_5b = 0x0,
     UART_WordLength_6b = 0x1,
     UART_WordLength_7b = 0x2,
     UART_WordLength_8b = 0x3
 } UART_WordLength;
 
-typedef enum {
+typedef enum
+{
     USART_StopBits_1   = 0x1,
     USART_StopBits_1_5 = 0x2,
     USART_StopBits_2   = 0x3,
 } UART_StopBits;
 
-typedef enum {
+typedef enum
+{
     UART0 = 0x0,
     UART1 = 0x1,
 } UART_Port;
 
-typedef enum {
+typedef enum
+{
     USART_Parity_None = 0x2,
     USART_Parity_Even = 0x0,
     USART_Parity_Odd  = 0x1
 } UART_ParityMode;
 
-typedef enum {
+typedef enum
+{
     PARITY_DIS = 0x0,
     PARITY_EN  = 0x2
 } UartExistParity;
 
-typedef enum {
+typedef enum
+{
     BIT_RATE_300     = 300,
     BIT_RATE_600     = 600,
     BIT_RATE_1200    = 1200,
@@ -60,14 +66,16 @@ typedef enum {
     BIT_RATE_3686400 = 3686400,
 } UART_BautRate; //you can add any rate you need in this range
 
-typedef enum {
+typedef enum
+{
     USART_HardwareFlowControl_None    = 0x0,
     USART_HardwareFlowControl_RTS     = 0x1,
     USART_HardwareFlowControl_CTS     = 0x2,
     USART_HardwareFlowControl_CTS_RTS = 0x3
 } UART_HwFlowCtrl;
 
-typedef enum {
+typedef enum
+{
     UART_None_Inverse = 0x0,
     UART_Rxd_Inverse  = UART_RXD_INV,
     UART_CTS_Inverse  = UART_CTS_INV,
@@ -75,7 +83,8 @@ typedef enum {
     UART_RTS_Inverse  = UART_RTS_INV,
 } UART_LineLevelInverse;
 
-typedef struct {
+typedef struct
+{
     uint32          UART_InverseMask;
     UART_BautRate   baud_rate;
     UART_WordLength data_bits;
@@ -85,7 +94,8 @@ typedef struct {
     uint8           UART_RxFlowThresh ;
 } UART_ConfigTypeDef;
 
-typedef struct {
+typedef struct
+{
     uint32 UART_IntrEnMask;
     uint8  UART_RX_TimeOutIntrThresh;
     uint8  UART_TX_FifoEmptyIntrThresh;

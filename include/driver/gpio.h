@@ -66,7 +66,8 @@
 
 #define GPIO_REGID_TO_PINIDX(reg_id) ((reg_id) - GPIO_ID_PIN0)
 
-typedef enum {
+typedef enum
+{
     GPIO_PIN_INTR_DISABLE = 0,
     GPIO_PIN_INTR_POSEDGE = 1,
     GPIO_PIN_INTR_NEGEDGE = 2,
@@ -75,19 +76,22 @@ typedef enum {
     GPIO_PIN_INTR_HILEVEL = 5
 } GPIO_INT_TYPE;
 
-typedef enum {
+typedef enum
+{
     GPIO_Mode_Input = 0x0,
     GPIO_Mode_Out_OD,
     GPIO_Mode_Output ,
     GPIO_Mode_Sigma_Delta ,
 } GPIOMode_TypeDef;
 
-typedef enum {
+typedef enum
+{
     GPIO_PullUp_DIS = 0x0,
     GPIO_PullUp_EN  = 0x1,
 } GPIO_Pullup_IF;
 
-typedef struct {
+typedef struct
+{
     uint16           GPIO_Pin;
     GPIOMode_TypeDef GPIO_Mode;
     GPIO_Pullup_IF   GPIO_Pullup;

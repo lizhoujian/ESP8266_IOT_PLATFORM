@@ -59,7 +59,7 @@
 #define ESP_DOMAIN      "iot.espressif.cn"
 
 /*SSL not Ready*/
-//#define SERVER_SSL_ENABLE 
+//#define SERVER_SSL_ENABLE
 //#define CLIENT_SSL_ENABLE
 //#define UPGRADE_SSL_ENABLE
 

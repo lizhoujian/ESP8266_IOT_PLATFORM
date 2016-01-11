@@ -22,7 +22,7 @@
 
 
 /*set target duty for PWM channels, change each channel duty gradually */
-void  light_set_aim(uint32 r,uint32 g,uint32 b,uint32 cw,uint32 ww,uint32 period);//'white' channel is not used in default demo
+void  light_set_aim(uint32 r, uint32 g, uint32 b, uint32 cw, uint32 ww, uint32 period); //'white' channel is not used in default demo
 void light_set_aim_r(uint32 r);
 void light_set_aim_g(uint32 g);
 void light_set_aim_b(uint32 b);

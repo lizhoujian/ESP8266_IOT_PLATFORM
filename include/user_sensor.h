@@ -22,7 +22,8 @@
 #define SENSOR_UNUSED_LED_IO_NUM     15
 #define SENSOR_UNUSED_LED_IO_FUNC    FUNC_GPIO15
 
-enum {
+enum
+{
     LED_OFF = 0,
     LED_ON  = 1,
     LED_1HZ,

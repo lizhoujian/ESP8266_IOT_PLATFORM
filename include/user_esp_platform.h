@@ -14,7 +14,8 @@
 
 #define token_size 41
 
-struct esp_platform_saved_param {
+struct esp_platform_saved_param
+{
     uint8 devkey[40];
     uint8 token[40];
     uint8 activeflag;
@@ -22,15 +23,17 @@ struct esp_platform_saved_param {
     uint8 pad[2];
 };
 
-enum {
-    DEVICE_GOT_IP=39,
+enum
+{
+    DEVICE_GOT_IP = 39,
     DEVICE_CONNECTING,
     DEVICE_ACTIVE_DONE,
     DEVICE_ACTIVE_FAIL,
     DEVICE_CONNECT_SERVER_FAIL
 };
 
-struct dhcp_client_info {
+struct dhcp_client_info
+{
     ip_addr_t ip_addr;
     ip_addr_t netmask;
     ip_addr_t gw;
@@ -38,14 +41,16 @@ struct dhcp_client_info {
     uint8 pad[3];
 };
 
-enum{
+enum
+{
     AP_DISCONNECTED = 0,
     AP_CONNECTED,
     DNS_SUCESSES,
     DNS_FAIL,
 };
 
-struct client_conn_param {
+struct client_conn_param
+{
     int32 sock_fd;
 #ifdef CLIENT_SSL_ENABLE
     SSL *ssl;

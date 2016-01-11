@@ -29,17 +29,20 @@
 
 #define STOP_TIMER 120000
 
-typedef enum Result_Resp {
+typedef enum Result_Resp
+{
     RespFail = 0,
     RespSuc,
 } Result_Resp;
 
-typedef enum ProtocolType {
+typedef enum ProtocolType
+{
     GET = 0,
     POST,
 } ProtocolType;
 
-typedef enum _ParmType {
+typedef enum _ParmType
+{
     SWITCH_STATUS = 0,
     INFOMATION,
     WIFI,
@@ -51,20 +54,23 @@ typedef enum _ParmType {
     USER_BIN
 } ParmType;
 
-typedef struct URL_Frame {
+typedef struct URL_Frame
+{
     enum ProtocolType Type;
     char pSelect[URLSize];
     char pCommand[URLSize];
     char pFilename[URLSize];
 } URL_Frame;
 
-typedef struct _rst_parm {
+typedef struct _rst_parm
+{
     struct conn_param *pconnpara;
     ParmType parmtype;
 } rst_parm;
 
 
-struct single_conn_param {
+struct single_conn_param
+{
     int32 sock_fd;
     int32  timeout;
     os_timer_t stop_watch;
@@ -73,7 +79,8 @@ struct single_conn_param {
 #endif
 };
 
-struct conn_param {
+struct conn_param
+{
     int32 conn_num;
     struct single_conn_param **single_conn;
 };

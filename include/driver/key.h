@@ -5,19 +5,21 @@
 
 typedef void (* key_function)(void);
 
-struct single_key_param {
+struct single_key_param
+{
     uint32 gpio_name;
     os_timer_t key_5s;
     os_timer_t key_50ms;
     key_function short_press;
     key_function long_press;
-    
+
     uint8 key_level;
     uint8 gpio_id;
     uint8 gpio_func;
 };
 
-struct keys_param {
+struct keys_param
+{
     struct single_key_param **single_key;
     uint8 key_num;
 };

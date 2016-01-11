@@ -3,7 +3,8 @@
 
 #include "httpd.h"
 
-typedef enum _ParmType {
+typedef enum _ParmType
+{
     SWITCH_STATUS = 0,
     INFOMATION,
     WIFI,
@@ -16,7 +17,8 @@ typedef enum _ParmType {
 } ParmType;
 
 
-typedef struct _rst_parm {
+typedef struct _rst_parm
+{
     ParmType parmtype;
 } rst_parm;
 

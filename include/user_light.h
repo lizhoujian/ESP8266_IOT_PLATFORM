@@ -29,7 +29,8 @@
 #define APP_MAX_PWM 22222
 
 
-enum {
+enum
+{
     LIGHT_RED = 0,
     LIGHT_GREEN,
     LIGHT_BLUE,
@@ -37,7 +38,8 @@ enum {
     LIGHT_WARM_WHITE,
 };
 
-enum {
+enum
+{
     LED_OFF = 0,
     LED_ON  = 1,
     LED_1HZ,
@@ -66,7 +68,8 @@ enum {
 #define PWM_4_OUT_IO_NUM 4
 #define PWM_4_OUT_IO_FUNC  FUNC_GPIO4
 
-struct light_saved_param {
+struct light_saved_param
+{
     uint32  pwm_period;
     uint32  pwm_duty[PWM_CHANNEL];
 };

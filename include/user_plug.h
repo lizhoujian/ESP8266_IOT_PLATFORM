@@ -29,7 +29,8 @@
 
 #define PLUG_STATUS_OUTPUT(pin, on)     GPIO_OUTPUT_SET(pin, on)
 
-enum {
+enum
+{
     LED_OFF = 0,
     LED_ON  = 1,
     LED_1HZ,
@@ -37,7 +38,8 @@ enum {
     LED_20HZ,
 };
 
-struct plug_saved_param {
+struct plug_saved_param
+{
     uint8_t status;
     uint8_t pad[3];
 };

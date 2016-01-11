@@ -9,27 +9,28 @@
 
 #define PRIV_PARAM_SAVE     0
 
-#define PLUG_KEY_NUM            1
+#define FX2N_KEY_NUM            1
 
-#define PLUG_KEY_0_IO_MUX     PERIPHS_IO_MUX_MTCK_U
-#define PLUG_KEY_0_IO_NUM     13
-#define PLUG_KEY_0_IO_FUNC    FUNC_GPIO13
+#define FX2N_KEY_0_IO_MUX     PERIPHS_IO_MUX_MTCK_U
+#define FX2N_KEY_0_IO_NUM     13
+#define FX2N_KEY_0_IO_FUNC    FUNC_GPIO13
 
-#define PLUG_WIFI_LED_IO_MUX     PERIPHS_IO_MUX_GPIO0_U
-#define PLUG_WIFI_LED_IO_NUM     0
-#define PLUG_WIFI_LED_IO_FUNC    FUNC_GPIO0
+#define FX2N_WIFI_LED_IO_MUX     PERIPHS_IO_MUX_GPIO0_U
+#define FX2N_WIFI_LED_IO_NUM     0
+#define FX2N_WIFI_LED_IO_FUNC    FUNC_GPIO0
 
-#define PLUG_LINK_LED_IO_MUX     PERIPHS_IO_MUX_MTDI_U
-#define PLUG_LINK_LED_IO_NUM     12
-#define PLUG_LINK_LED_IO_FUNC    FUNC_GPIO12
+#define FX2N_LINK_LED_IO_MUX     PERIPHS_IO_MUX_MTDI_U
+#define FX2N_LINK_LED_IO_NUM     12
+#define FX2N_LINK_LED_IO_FUNC    FUNC_GPIO12
 
-#define PLUG_RELAY_LED_IO_MUX     PERIPHS_IO_MUX_MTDO_U
-#define PLUG_RELAY_LED_IO_NUM     15
-#define PLUG_RELAY_LED_IO_FUNC    FUNC_GPIO15
+#define FX2N_SERIAL_SWITCH_IO_MUX     PERIPHS_IO_MUX_GPIO2_U
+#define FX2N_SERIAL_SWITCH_IO_NUM     2
+#define FX2N_SERIAL_SWITCH_IO_FUNC    FUNC_GPIO2
 
-#define PLUG_STATUS_OUTPUT(pin, on)     GPIO_OUTPUT_SET(pin, on)
+#define FX2N_STATUS_OUTPUT(pin, on)     GPIO_OUTPUT_SET(pin, on)
 
-enum {
+enum
+{
     LED_OFF = 0,
     LED_ON  = 1,
     LED_1HZ,
@@ -38,24 +39,20 @@ enum {
 };
 
 #define MAX_SWITCH_SOCKET 32
-struct fx2n_saved_param {
+struct fx2n_saved_param
+{
     uint8_t status[MAX_SWITCH_SOCKET];
+    uint8_t serial_switch_state;
     uint32_t pad[1];
 };
 
 void user_fx2n_init(void);
-uint8_t user_fx2n_count(void);
 
-char *user_fx2n_get_status_string(char *s, int len);
-void user_fx2n_set_status_string(char *s, int len);
+BOOL user_fx2n_set_run(BOOL run);
+BOOL user_fx2n_run_status(void);
 
-/* old style */
-uint32_t user_fx2n_get_status_int(void);
-void user_fx2n_set_status_int(uint32_t num, uint32_t v);
-
-/* new style */
-bool user_fx2n_get_status(uint8_t index);
-void user_fx2n_set_status(uint8_t index, bool status);
+// 1 - plc serial connect to pc; 2 - plc serial connect to wifi
+u8 user_fx2n_serial_switch(u8 cmd);
 
 BOOL user_get_key_status(void);
 

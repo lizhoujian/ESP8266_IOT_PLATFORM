@@ -4,7 +4,7 @@
 /*
 Stupid cpio-like tool to make read-only 'filesystems' that live on the flash SPI chip of the module.
 Can (will) use lzf compression (when I come around to it) to make shit quicker. Aligns names, files,
-headers on 4-byte boundaries so the SPI abstraction hardware in the ESP8266 doesn't crap on itself 
+headers on 4-byte boundaries so the SPI abstraction hardware in the ESP8266 doesn't crap on itself
 when trying to do a <4byte or unaligned read.
 */
 
@@ -21,13 +21,14 @@ with the FLAG_LASTFILE flag set.
 #define COMPRESS_HEATSHRINK 1
 #define ESPFS_MAGIC 0x73665345
 
-typedef struct {
-	int32_t magic;
-	int8_t flags;
-	int8_t compression;
-	int16_t nameLen;
-	int32_t fileLenComp;
-	int32_t fileLenDecomp;
+typedef struct
+{
+    int32_t magic;
+    int8_t flags;
+    int8_t compression;
+    int16_t nameLen;
+    int32_t fileLenComp;
+    int32_t fileLenDecomp;
 } __attribute__((packed)) EspFsHeader;
 
 #endif

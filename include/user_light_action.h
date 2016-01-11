@@ -6,15 +6,17 @@
 
 
 //Light state. Bitfield.
-typedef enum {
-	LST_ACTIVE=(1<<0),
-	LST_ACKED=(1<<1)
+typedef enum
+{
+    LST_ACTIVE = (1 << 0),
+    LST_ACKED = (1 << 1)
 } LightStatusEnum;
 
 
-typedef struct {
-	uint8_t mac[6];
-	uint16_t status;
+typedef struct
+{
+    uint8_t mac[6];
+    uint16_t status;
 } LampMacType;
 
 

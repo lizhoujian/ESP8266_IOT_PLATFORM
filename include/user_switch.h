@@ -30,10 +30,10 @@
 
 #define SWITCH_INPUT_03_IO_MUX PERIPHS_IO_MUX_GPIO4_U
 #define SWITCH_INPUT_03_IO_NUM 4
-#define SWITCH_INPUT_03_IO_FUNC FUNC_GPIO4 
+#define SWITCH_INPUT_03_IO_FUNC FUNC_GPIO4
 #define SWITCH_INPUT_03_IO_PIN GPIO_Pin_4
 
-#define SWITCH_INPUT_04_IO_MUX PERIPHS_IO_MUX_GPIO5_U 
+#define SWITCH_INPUT_04_IO_MUX PERIPHS_IO_MUX_GPIO5_U
 #define SWITCH_INPUT_04_IO_NUM 5
 #define SWITCH_INPUT_04_IO_FUNC FUNC_GPIO5
 #define SWITCH_INPUT_04_IO_PIN GPIO_Pin_5
@@ -100,8 +100,9 @@
     ((reg_id >= GPIO_ID_PIN0) && (reg_id <= GPIO_ID_PIN(GPIO_PIN_COUNT-1)))
 
 #define GPIO_REGID_TO_PINIDX(reg_id) ((reg_id) - GPIO_ID_PIN0)
-#if 0 
-typedef enum {
+#if 0
+typedef enum
+{
     GPIO_PIN_INTR_DISABLE = 0,
     GPIO_PIN_INTR_POSEDGE = 1,
     GPIO_PIN_INTR_NEGEDGE = 2,
@@ -111,19 +112,22 @@ typedef enum {
 } GPIO_INT_TYPE;
 #endif
 
-typedef enum {
+typedef enum
+{
     GPIO_Mode_Input = 0x0,
     GPIO_Mode_Out_OD,
     GPIO_Mode_Output ,
     GPIO_Mode_Sigma_Delta ,
 } GPIOMode_TypeDef;
 
-typedef enum {
+typedef enum
+{
     GPIO_PullUp_DIS = 0x0,
     GPIO_PullUp_EN  = 0x1,
 } GPIO_Pullup_IF;
 
-typedef struct {
+typedef struct
+{
     uint16           GPIO_Pin;
     GPIOMode_TypeDef GPIO_Mode;
     GPIO_Pullup_IF   GPIO_Pullup;

@@ -33,32 +33,36 @@
 
 #include "greatest.h"
 
-TEST foo_should_foo() {
+TEST foo_should_foo()
+{
     PASS();
 }
 
-static void setup_cb(void *data) {
+static void setup_cb(void *data)
+{
     printf("setup callback for each test case\n");
 }
 
-static void teardown_cb(void *data) {
+static void teardown_cb(void *data)
+{
     printf("teardown callback for each test case\n");
 }
 
-SUITE(suite) {
+SUITE(suite)
+{
     /* Optional setup/teardown callbacks which will be run before/after
      * every test case in the suite.
      * Cleared when the suite finishes. */
     SET_SETUP(setup_cb, voidp_to_callback_data);
     SET_TEARDOWN(teardown_cb, voidp_to_callback_data);
-
     RUN_TEST(foo_should_foo);
 }
 
 /* Add all the definitions that need to be in the test runner's main file. */
 GREATEST_MAIN_DEFS();
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     GREATEST_MAIN_BEGIN();      /* command-line arguments, initialization. */
     RUN_SUITE(suite);
     GREATEST_MAIN_END();        /* display results */
@@ -99,7 +103,8 @@ int main(int argc, char **argv) {
  *********/
 
 /* Info for the current running suite. */
-typedef struct greatest_suite_info {
+typedef struct greatest_suite_info
+{
     unsigned int tests_run;
     unsigned int passed;
     unsigned int failed;
@@ -120,13 +125,15 @@ typedef void (greatest_suite_cb)(void);
 typedef void (greatest_setup_cb)(void *udata);
 typedef void (greatest_teardown_cb)(void *udata);
 
-typedef enum {
+typedef enum
+{
     GREATEST_FLAG_VERBOSE = 0x01,
     GREATEST_FLAG_FIRST_FAIL = 0x02,
     GREATEST_FLAG_LIST_ONLY = 0x04
 } GREATEST_FLAG;
 
-typedef struct greatest_run_info {
+typedef struct greatest_run_info
+{
     unsigned int flags;
     unsigned int tests_run;     /* total test count */
 
@@ -295,13 +302,13 @@ void GREATEST_SET_TEARDOWN_CB(greatest_teardown_cb *cb, void *udata);
         }                                                               \
         greatest_info.msg = NULL;                                       \
     } while (0)
-        
+
 #define GREATEST_PASSm(MSG)                                             \
     do {                                                                \
         greatest_info.msg = MSG;                                        \
         return 0;                                                       \
     } while (0)
-        
+
 #define GREATEST_FAILm(MSG)                                             \
     do {                                                                \
         greatest_info.fail_file = __FILE__;                             \

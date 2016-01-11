@@ -25,9 +25,12 @@ LOCAL uint8 link_led_level = 0;
 static
 bool get_bit_status(uint8_t index)
 {
-    if (index < MAX_SWITCH_SOCKET) {
+    if (index < MAX_SWITCH_SOCKET)
+    {
         return plugs_param.status[index] & 0x1;
-    } else {
+    }
+    else
+    {
         printf("get_bit_status, invalid index = %d.\n", index);
         return 0;
     }
@@ -36,9 +39,12 @@ bool get_bit_status(uint8_t index)
 static
 void set_bit_status(uint8_t index, bool status)
 {
-    if (index < MAX_SWITCH_SOCKET) {
+    if (index < MAX_SWITCH_SOCKET)
+    {
         plugs_param.status[index] = status;
-    } else {
+    }
+    else
+    {
         printf("set_bit_status, invalid index = %d.\n", index);
     }
 }
@@ -53,7 +59,8 @@ char *
 user_plugs_get_status_string(char *s, int len)
 {
     int i;
-    for (i = 0; i < user_plugs_count() && i < len; i++) {
+    for (i = 0; i < user_plugs_count() && i < len; i++)
+    {
         s[i] = get_bit_status(i) + '0';
     }
     return s;
@@ -63,7 +70,8 @@ void
 user_plugs_set_status_string(char *s, int len)
 {
     int i;
-    for (i = 0; i < user_plugs_count() && i < len; i++) {
+    for (i = 0; i < user_plugs_count() && i < len; i++)
+    {
         set_bit_status(i, s[i] != '0' ? true : false);
     }
 }
@@ -71,9 +79,9 @@ user_plugs_set_status_string(char *s, int len)
 uint32_t user_plugs_get_status_int(void)
 {
     int ret, i;
-
     ret = 0;
-    for (i = 31; i >= 0; i--) {
+    for (i = 31; i >= 0; i--)
+    {
         ret = (ret << 1) | (plugs_param.status[i] & 0x1);
     }
     return ret;
@@ -82,7 +90,8 @@ uint32_t user_plugs_get_status_int(void)
 void user_plugs_set_status_int(uint32_t num, uint32_t v)
 {
     int i;
-    for (i = 0; i < num; i++) {
+    for (i = 0; i < num; i++)
+    {
         user_plugs_set_status(i, (v >> i) & 0x1);
     }
 }
@@ -108,7 +117,8 @@ user_plugs_get_status(uint8_t index)
 void
 user_plugs_set_status(uint8_t index, bool status)
 {
-    if (status != get_bit_status(index)) {
+    if (status != get_bit_status(index))
+    {
         printf("change switch %d,%d\n", index, status);
         set_bit_status(index, status);
         PLUG_STATUS_OUTPUT(PLUG_RELAY_LED_IO_NUM, status);
@@ -121,12 +131,12 @@ user_plugs_set_status(uint8_t index, bool status)
  * Parameters   : none
  * Returns      : none
 *******************************************************************************/
-LOCAL void  
+LOCAL void
 user_plugs_short_press(void)
 {
     spi_flash_erase_sector(PRIV_PARAM_START_SEC + PRIV_PARAM_SAVE);
     spi_flash_write((PRIV_PARAM_START_SEC + PRIV_PARAM_SAVE) * SPI_FLASH_SEC_SIZE,
-                (uint32 *)&plugs_param, sizeof(struct plugs_saved_param));
+                    (uint32 *)&plugs_param, sizeof(struct plugs_saved_param));
 }
 
 /******************************************************************************
@@ -135,22 +145,19 @@ user_plugs_short_press(void)
  * Parameters   : none
  * Returns      : none
 *******************************************************************************/
-LOCAL void  
+LOCAL void
 user_plugs_long_press(void)
 {
-    int boot_flag=12345;
+    int boot_flag = 12345;
     user_esp_platform_set_active(0);
     system_restore();
-
     system_rtc_mem_write(70, &boot_flag, sizeof(boot_flag));
-    printf("long_press boot_flag %d  \n",boot_flag);
+    printf("long_press boot_flag %d  \n", boot_flag);
     system_rtc_mem_read(70, &boot_flag, sizeof(boot_flag));
-    printf("long_press boot_flag %d  \n",boot_flag);
-
+    printf("long_press boot_flag %d  \n", boot_flag);
 #if RESTORE_KEEP_TIMER
     user_platform_timer_bkup();
-#endif 
-
+#endif
     system_restart();
 }
 
@@ -160,20 +167,20 @@ user_plugs_long_press(void)
  * Parameters   : none
  * Returns      : none
 *******************************************************************************/
-LOCAL void  
+LOCAL void
 user_link_led_init(void)
 {
     PIN_FUNC_SELECT(PLUG_LINK_LED_IO_MUX, PLUG_LINK_LED_IO_FUNC);
 }
 
-LOCAL void  
+LOCAL void
 user_link_led_timer_cb(void)
 {
     link_led_level = (~link_led_level) & 0x01;
     GPIO_OUTPUT_SET(GPIO_ID_PIN(PLUG_LINK_LED_IO_NUM), link_led_level);
 }
 
-void  
+void
 user_link_led_timer_init(int time)
 {
     os_timer_disarm(&link_led_timer);
@@ -183,7 +190,7 @@ user_link_led_timer_init(int time)
     GPIO_OUTPUT_SET(GPIO_ID_PIN(PLUG_LINK_LED_IO_NUM), link_led_level);
 }
 /*
-void  
+void
 user_link_led_timer_done(void)
 {
     os_timer_disarm(&link_led_timer);
@@ -197,38 +204,32 @@ user_link_led_timer_done(void)
  * Parameters   : mode, on/off/xhz
  * Returns      : none
 *******************************************************************************/
-void  
+void
 user_link_led_output(uint8 mode)
 {
-
-    switch (mode) {
-        case LED_OFF:
-            os_timer_disarm(&link_led_timer);
-            GPIO_OUTPUT_SET(GPIO_ID_PIN(PLUG_LINK_LED_IO_NUM), 1);
-            break;
-    
-        case LED_ON:
-            os_timer_disarm(&link_led_timer);
-            GPIO_OUTPUT_SET(GPIO_ID_PIN(PLUG_LINK_LED_IO_NUM), 0);
-            break;
-    
-        case LED_1HZ:
-            user_link_led_timer_init(1000);
-            break;
-    
-        case LED_5HZ:
-            user_link_led_timer_init(200);
-            break;
-
-        case LED_20HZ:
-            user_link_led_timer_init(50);
-            break;
-
-        default:
-            printf("ERROR:LED MODE WRONG!\n");
-            break;
+    switch (mode)
+    {
+    case LED_OFF:
+        os_timer_disarm(&link_led_timer);
+        GPIO_OUTPUT_SET(GPIO_ID_PIN(PLUG_LINK_LED_IO_NUM), 1);
+        break;
+    case LED_ON:
+        os_timer_disarm(&link_led_timer);
+        GPIO_OUTPUT_SET(GPIO_ID_PIN(PLUG_LINK_LED_IO_NUM), 0);
+        break;
+    case LED_1HZ:
+        user_link_led_timer_init(1000);
+        break;
+    case LED_5HZ:
+        user_link_led_timer_init(200);
+        break;
+    case LED_20HZ:
+        user_link_led_timer_init(50);
+        break;
+    default:
+        printf("ERROR:LED MODE WRONG!\n");
+        break;
     }
-    
 }
 
 /******************************************************************************
@@ -237,7 +238,7 @@ user_link_led_output(uint8 mode)
  * Parameters   : none
  * Returns      : none
 *******************************************************************************/
-BOOL  
+BOOL
 user_get_key_status(void)
 {
     return get_key_status(single_key[0]);
@@ -249,39 +250,30 @@ user_get_key_status(void)
  * Parameters   : none
  * Returns      : none
 *******************************************************************************/
-void  
+void
 user_plugs_init(void)
 {
     int i;
     printf("user_plugs_init start!\n");
-
     user_link_led_init();
-
     wifi_status_led_install(PLUG_WIFI_LED_IO_NUM, PLUG_WIFI_LED_IO_MUX, PLUG_WIFI_LED_IO_FUNC);
-
     single_key[0] = key_init_single(PLUG_KEY_0_IO_NUM, PLUG_KEY_0_IO_MUX, PLUG_KEY_0_IO_FUNC,
                                     user_plugs_long_press, user_plugs_short_press);
-
     keys.key_num = PLUG_KEY_NUM;
     keys.single_key = single_key;
-
     key_init(&keys);
-
 #if 0
     spi_flash_read((PRIV_PARAM_START_SEC + PRIV_PARAM_SAVE) * SPI_FLASH_SEC_SIZE,
-                (uint32 *)&plugs_param, sizeof(struct plugs_saved_param));
-
+                   (uint32 *)&plugs_param, sizeof(struct plugs_saved_param));
     PIN_FUNC_SELECT(PLUG_RELAY_LED_IO_MUX, PLUG_RELAY_LED_IO_FUNC);
-
     // default to be off, for safety.
     memset(plugs_param.status, 0, sizeof(plugs_param.status));
-
     //PLUG_STATUS_OUTPUT(PLUG_RELAY_LED_IO_NUM, plugs_param.status);
 #else
     // TODO: read from plc
     memset(plugs_param.status, 0, sizeof(plugs_param.status));
     plugs_param.status[0] = '1';
-#endif    
+#endif
 }
 #endif
 
