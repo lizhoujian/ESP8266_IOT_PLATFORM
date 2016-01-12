@@ -327,8 +327,11 @@ static void byte_to_hex_string(u8 *in, u8 **out, u8 len)
 "status":0}}
 *******************************************************************************/
 LOCAL int
-fx2n_status_get(cJSON *pcjson, const char *pname )
+fx2n_status_get(cJSON *pcjson, const char *pname)
 {
+    cJSON_AddNumberToObject(pcjson, "run", user_fx2n_run_status());
+    cJSON_AddNumberToObject(pcjson, "result", 1);
+    cJSON_AddStringToObject(pcjson, "value", "");
     return 0;
 }
 /******************************************************************************
@@ -376,10 +379,12 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
         {
             len = pSub->valueint;
         }
-        pSub = cJSON_GetObjectItem(pJson, "data");
-        if (pSub && pSub->valuestring)
-        {
-            hex_string_to_byte(pSub->valuestring, &bytes, len);
+        if (cmd == ACTION_WRITE) {
+            pSub = cJSON_GetObjectItem(pJson, "data");
+            if (pSub && pSub->valuestring)
+            {
+                hex_string_to_byte(pSub->valuestring, &bytes, len);
+            }
         }
     }
     printf("fx2n request: %d, %d, %d \n", cmd, addr_type, addr);
@@ -414,6 +419,7 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
     {
         ret = false;
     }
+    cJSON_AddNumberToObject(pcjson, "run", user_fx2n_run_status());
     cJSON_AddNumberToObject(pcjson, "result", ret);
     if (ret && out)
     {
