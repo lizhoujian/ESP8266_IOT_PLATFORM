@@ -56,7 +56,7 @@
 #if FX2N_DEVICE
 #include "user_fx2n.h"
 
-#define RESPONSE_FRAME  "{\"status\": 200, \"datapoint\": {\"run\": %d,\"result\": %d,\"value\":\"%s\"}, \"nonce\": %d, \"deliver_to_device\": true}\n"
+#define RESPONSE_FRAME  "{\"status\": 200, \"datapoint\": {\"x\": %d,\"y\": %d,\"z\":\"%s\"}, \"nonce\": %d, \"deliver_to_device\": true}\n"
 #define FIRST_FRAME     "{\"nonce\": %d, \"path\": \"/v1/device/identify\", \"method\": \"GET\",\"meta\": {\"Authorization\": \"token %s\"}}\n"
 #endif
 #if LIGHT_DEVICE
@@ -405,33 +405,32 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
 
     root = cJSON_Parse(pbuffer);
     if (root) {
-        pSub = cJSON_GetObjectItem(root, "get");
-        if (!pSub) {
-            pSub = cJSON_GetObjectItem(root, "post");
-        }
+        pSub = cJSON_GetObjectItem(root, "datapoint");
         if (pSub) {
-            pAction = cJSON_GetObjectItem(pSub, "action");
+            pAction = cJSON_GetObjectItem(pSub, "h");
             printf("fx2n action: %s\n", pAction->valuestring);
             if (pAction && strcmp(pAction->valuestring, "control")) {
-                pSub = cJSON_GetObjectItem(pSub, "cmd");
+                pSub = cJSON_GetObjectItem(pSub, "x");
                 if (pSub) {
                     cmd = pSub->valueint;
                 }
-                pSub = cJSON_GetObjectItem(pSub, "addr_type");
+                pSub = cJSON_GetObjectItem(pSub, "y");
                 if (pSub) {
                     addr_type = pSub->valueint;
                 }
-                pSub = cJSON_GetObjectItem(pSub, "addr");
+                pSub = cJSON_GetObjectItem(pSub, "z");
                 if (pSub) {
                     addr = pSub->valueint;
                 }
-                pSub = cJSON_GetObjectItem(pSub, "len");
+                pSub = cJSON_GetObjectItem(pSub, "l");
                 if (pSub) {
                     len = pSub->valueint;
                 }
-                pSub = cJSON_GetObjectItem(pSub, "data");
-                if (pSub && pSub->valuestring) {
-                    hex_string_to_byte(pSub->valuestring, &bytes, len);
+                if (cmd == ACTION_WRITE) {
+                    pSub = cJSON_GetObjectItem(pSub, "k");
+                    if (pSub && pSub->valuestring) {
+                        hex_string_to_byte(pSub->valuestring, &bytes, len);
+                    }
                 }
                 printf("fx2n request: %d, %d, %d \n", cmd, addr_type, addr);
                 if (cmd == ENQ) {
@@ -460,20 +459,20 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
                     byte_to_hex_string(out, &hexString, len);
                 }
             } else if (pAction && strcmp(pAction->valuestring, "net_serial")) {
-                pSub = cJSON_GetObjectItem(root, "cmd");
+                pSub = cJSON_GetObjectItem(root, "x");
                 if (pSub) {
                     cmd = pSub->valueint; // 0 - read; 1  - write
                 }
                 hexString = (u8*)zalloc(50);
                 strcpy(hexString, "netSerial not impl.");
             } else if (pAction && strcmp(pAction->valuestring, "plc_run_stop")) {
-                pSub = cJSON_GetObjectItem(root, "cmd");
+                pSub = cJSON_GetObjectItem(root, "x");
                 if (pSub) {
                     cmd = pSub->valueint;
                     ret = user_fx2n_set_run(cmd);
                 }
             } else if (pAction && strcmp(pAction->valuestring, "serial_switch")) {
-                pSub = cJSON_GetObjectItem(root, "cmd");
+                pSub = cJSON_GetObjectItem(root, "x");
                 if (pSub) {
                     cmd = pSub->valueint;
                     ret = user_fx2n_serial_switch(cmd);
