@@ -350,6 +350,7 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
     u8 cmd = 0xff, addr_type = 0;
     u16 addr = 0;
     u8 *data = NULL;
+    u8 *action = NULL;
     u8 *bytes = NULL;
     u8 *out = NULL;
     u8 *hexString = NULL;
@@ -359,84 +360,92 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
     cJSON *pJson =  cJSON_Parse(pValue);
     if (NULL != pJson)
     {
+        pSub = cJSON_GetObjectItem(pJson, "action");
+        if (pSub){
+            action = pSub->valuestring;
+        }
         pSub = cJSON_GetObjectItem(pJson, "cmd");
-        if (pSub)
-        {
+        if (pSub) {
             cmd = pSub->valueint;
         }
         pSub = cJSON_GetObjectItem(pJson, "addr_type");
-        if (pSub)
-        {
+        if (pSub) {
             addr_type = pSub->valueint;
         }
         pSub = cJSON_GetObjectItem(pJson, "addr");
-        if (pSub)
-        {
+        if (pSub) {
             addr = pSub->valueint;
         }
         pSub = cJSON_GetObjectItem(pJson, "len");
-        if (pSub)
-        {
+        if (pSub) {
             len = pSub->valueint;
         }
         if (cmd == ACTION_WRITE) {
             pSub = cJSON_GetObjectItem(pJson, "data");
-            if (pSub && pSub->valuestring)
-            {
+            if (pSub && pSub->valuestring) {
                 hex_string_to_byte(pSub->valuestring, &bytes, len);
             }
         }
     }
-    printf("fx2n request: %d, %d, %d \n", cmd, addr_type, addr);
-    if (cmd == ENQ)
-    {
-        ret = fx_enquiry();
-    }
-    else if (cmd == ACTION_FORCE_ON)
-    {
-        ret = fx_force_on(addr_type, addr);
-    }
-    else if (cmd == ACTION_FORCE_OFF)
-    {
-        ret = fx_force_off(addr_type, addr);
-    }
-    else if (cmd == ACTION_READ)
-    {
-        out = (u8 *)zalloc(len);
-        if (out)
-        {
-            ret = fx_read(addr_type, addr, out, len);
+    printf("fx2n request: %s, %d, %d, %d \n", action, cmd, addr_type, addr);
+    if (!strcmp(action, "control")) {
+        if (cmd == ENQ) {
+            ret = fx_enquiry();
         }
-    }
-    else if (cmd == ACTION_WRITE)
-    {
-        if (bytes)
-        {
-            ret = fx_write(addr_type, addr, bytes, len);
+        else if (cmd == ACTION_FORCE_ON) {
+            ret = fx_force_on(addr_type, addr);
         }
-    }
-    else
-    {
-        ret = false;
+        else if (cmd == ACTION_FORCE_OFF) {
+            ret = fx_force_off(addr_type, addr);
+        }
+        else if (cmd == ACTION_READ) {
+            out = (u8 *)zalloc(len);
+            if (out) {
+                ret = fx_read(addr_type, addr, out, len);
+            }
+        }
+        else if (cmd == ACTION_WRITE) {
+            if (bytes) {
+                ret = fx_write(addr_type, addr, bytes, len);
+            }
+        } else {
+            ret = false;
+        }
+    }else if (!strcmp(action, "plc_run_stop_set")) {
+        ret = user_fx2n_set_run(cmd);
+    }else if (!strcmp(action, "plc_run_stop_get")) {
+        ret = user_fx2n_run_status();
+    } else if (!strcmp(action, "serial_switch_set")) {
+        ret = user_fx2n_serial_switch(cmd);
+    }else if (!strcmp(action, "serial_switch_get")) {
+        ret = user_fx2n_serial_switch_status();
+    }else if (!strcmp(action, "lan_ip")) {
+        {
+            struct ip_info ipconfig;
+            hexString = (u8*)zalloc(50);
+            if (wifi_get_ip_info(STATION_IF, &ipconfig)) {
+                sprintf(hexString, IPSTR, IP2STR(&ipconfig.ip));
+                ret = true;
+            }
+        }
     }
     cJSON_AddNumberToObject(pcjson, "run", user_fx2n_run_status());
     cJSON_AddNumberToObject(pcjson, "result", ret);
-    if (ret && out)
-    {
+    if (ret && out) {
         byte_to_hex_string(out, &hexString, len);
-        if (hexString)
-        {
+        if (hexString) {
             cJSON_AddStringToObject(pcjson, "value", hexString);
             free(hexString);
         }
     }
-    if (out)
-    {
+    if (out) {
         free(out);
     }
-    if (bytes)
-    {
+    if (bytes) {
         free(bytes);
+    }
+    if (hexString) {
+        free(hexString);
     }
     if (NULL != pJson)cJSON_Delete(pJson);
     printf("fx2n_status_set ok\n");

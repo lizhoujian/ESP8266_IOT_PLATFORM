@@ -48,11 +48,11 @@ struct fx2n_saved_param
 
 void user_fx2n_init(void);
 
-BOOL user_fx2n_set_run(BOOL run);
-BOOL user_fx2n_run_status(void);
+u8 user_fx2n_set_run(u8 run);
+u8 user_fx2n_run_status(void);
 
-// 1 - plc serial connect to pc; 2 - plc serial connect to wifi
 u8 user_fx2n_serial_switch(u8 cmd);
+u8 user_fx2n_serial_switch_status(void);
 
 BOOL user_get_key_status(void);
 

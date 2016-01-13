@@ -382,6 +382,7 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
 {
     cJSON *root;
     cJSON *pSub;
+    cJSON *pObj;
     cJSON *pAction;
 
     u8 cmd = 0xff, addr_type = 0;
@@ -405,34 +406,39 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
 
     root = cJSON_Parse(pbuffer);
     if (root) {
-        pSub = cJSON_GetObjectItem(root, "datapoint");
-        if (pSub) {
-            pAction = cJSON_GetObjectItem(pSub, "h");
-            printf("fx2n action: %s\n", pAction->valuestring);
+        pSub = cJSON_GetObjectItem(root, "get");
+        if (!pSub) {
+            pSub = cJSON_GetObjectItem(root, "post");
+        }
+        if (pSub) { // get/post params
+            pAction = cJSON_GetObjectItem(pSub, "action");
+            if (pAction) {
+                printf("fx2n action: %s\n", pAction->valuestring);
+            }
             if (pAction && strcmp(pAction->valuestring, "control")) {
-                pSub = cJSON_GetObjectItem(pSub, "x");
-                if (pSub) {
-                    cmd = pSub->valueint;
+                pObj = cJSON_GetObjectItem(pSub, "x");
+                if (pObj) {
+                    cmd = atoi(pObj->valuestring);
                 }
-                pSub = cJSON_GetObjectItem(pSub, "y");
-                if (pSub) {
-                    addr_type = pSub->valueint;
+                pObj = cJSON_GetObjectItem(pSub, "y");
+                if (pObj) {
+                    addr_type = atoi(pObj->valuestring);
                 }
-                pSub = cJSON_GetObjectItem(pSub, "z");
-                if (pSub) {
-                    addr = pSub->valueint;
+                pObj = cJSON_GetObjectItem(pSub, "z");
+                if (pObj) {
+                    addr = atoi(pObj->valuestring);
                 }
-                pSub = cJSON_GetObjectItem(pSub, "l");
-                if (pSub) {
-                    len = pSub->valueint;
+                pObj = cJSON_GetObjectItem(pSub, "l");
+                if (pObj) {
+                    len = atoi(pObj->valuestring);
                 }
                 if (cmd == ACTION_WRITE) {
-                    pSub = cJSON_GetObjectItem(pSub, "k");
-                    if (pSub && pSub->valuestring) {
-                        hex_string_to_byte(pSub->valuestring, &bytes, len);
+                    pObj = cJSON_GetObjectItem(pSub, "k");
+                    if (pObj && pObj->valuestring) {
+                        hex_string_to_byte(pObj->valuestring, &bytes, len);
                     }
                 }
-                printf("fx2n request: %d, %d, %d \n", cmd, addr_type, addr);
+                printf("fx2n control request: %d, %d, %d \n", cmd, addr_type, addr);
                 if (cmd == ENQ) {
                     ret = fx_enquiry();
                 }
@@ -459,24 +465,28 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
                     byte_to_hex_string(out, &hexString, len);
                 }
             } else if (pAction && strcmp(pAction->valuestring, "net_serial")) {
-                pSub = cJSON_GetObjectItem(root, "x");
-                if (pSub) {
-                    cmd = pSub->valueint; // 0 - read; 1  - write
+                pObj = cJSON_GetObjectItem(pSub, "x");
+                if (pObj) {
+                    cmd = atoi(pObj->valuestring); // 0 - read; 1  - write
                 }
                 hexString = (u8*)zalloc(50);
                 strcpy(hexString, "netSerial not impl.");
-            } else if (pAction && strcmp(pAction->valuestring, "plc_run_stop")) {
-                pSub = cJSON_GetObjectItem(root, "x");
-                if (pSub) {
-                    cmd = pSub->valueint;
+            } else if (pAction && strcmp(pAction->valuestring, "plc_run_stop_set")) {
+                pObj = cJSON_GetObjectItem(pSub, "x");
+                if (pObj) {
+                    cmd = atoi(pObj->valuestring);
                     ret = user_fx2n_set_run(cmd);
                 }
-            } else if (pAction && strcmp(pAction->valuestring, "serial_switch")) {
-                pSub = cJSON_GetObjectItem(root, "x");
-                if (pSub) {
-                    cmd = pSub->valueint;
+            } else if (pAction && strcmp(pAction->valuestring, "plc_run_stop_get")) {
+                ret = user_fx2n_run_status();
+            } else if (pAction && strcmp(pAction->valuestring, "serial_switch_set")) {
+                pObj = cJSON_GetObjectItem(pSub, "x");
+                if (pObj) {
+                    cmd = atoi(pObj->valuestring);
                     ret = user_fx2n_serial_switch(cmd);
                 }
+            } else if (pAction && strcmp(pAction->valuestring, "serial_switch_get")) {
+                ret = user_fx2n_serial_switch_status();
             } else if (pAction && strcmp(pAction->valuestring, "lan_ip")) {
                 {
                     struct ip_info ipconfig;

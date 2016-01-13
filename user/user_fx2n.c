@@ -36,11 +36,11 @@ user_fx2n_save_param(void)
                     (uint32 *)&fx2n_param, sizeof(struct fx2n_saved_param));
 }
 
-BOOL user_fx2n_set_run(BOOL run)
+u8 user_fx2n_set_run(u8 run)
 {
     return true;
 }
-BOOL user_fx2n_run_status(void)
+u8 user_fx2n_run_status(void)
 {
     return true;
 }
@@ -59,7 +59,12 @@ u8 user_fx2n_serial_switch(u8 cmd)
 {
     fx2n_param.serial_switch_state = !!cmd;
     GPIO_OUTPUT_SET(GPIO_ID_PIN(FX2N_LINK_LED_IO_NUM), fx2n_param.serial_switch_state);
-    return true;
+    user_fx2n_save_param();
+    return fx2n_param.serial_switch_state;
+}
+
+u8 user_fx2n_serial_switch_status(void){
+    return fx2n_param.serial_switch_state;
 }
 
 /******************************************************************************
