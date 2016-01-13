@@ -253,7 +253,7 @@ user_esp_platform_set_token(uint8_t *token)
     if (token == NULL) {
         return;
     }
-    esp_param.activeflag = 0;
+    esp_param.activeflag = 1;
     esp_param.tokenrdy = 1;
     memcpy(esp_param.token, token, strlen(token));
     system_param_save_with_protect(ESP_PARAM_START_SEC, &esp_param, sizeof(esp_param));
@@ -397,7 +397,7 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
     u8 *action;
     int nonce = 0;
 
-    char *pbuf = (char *)zalloc(packet_size);
+    char *pbuf = (char *)zalloc(256);
     nonce = user_esp_platform_parse_nonce(pbuffer);
     if (!pbuf) {
         printf("create pbuf failed.\n");
@@ -415,7 +415,7 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
             if (pAction) {
                 printf("fx2n action: %s\n", pAction->valuestring);
             }
-            if (pAction && strcmp(pAction->valuestring, "control")) {
+            if (pAction && !strcmp(pAction->valuestring, "control")) {
                 pObj = cJSON_GetObjectItem(pSub, "x");
                 if (pObj) {
                     cmd = atoi(pObj->valuestring);
@@ -449,12 +449,14 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
                     ret = fx_force_off(addr_type, addr);
                 }
                 else if (cmd == ACTION_READ) {
+                    printf("execute read.\n");
                     out = (u8 *)zalloc(len);
                     if (out) {
                         ret = fx_read(addr_type, addr, out, len);
                     }
                 }
                 else if (cmd == ACTION_WRITE) {
+                    printf("execute write.\n");
                     if (bytes) {
                         ret = fx_write(addr_type, addr, bytes, len);
                     }
@@ -464,30 +466,30 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
                 if (ret && out) {
                     byte_to_hex_string(out, &hexString, len);
                 }
-            } else if (pAction && strcmp(pAction->valuestring, "net_serial")) {
+            } else if (pAction && !strcmp(pAction->valuestring, "net_serial")) {
                 pObj = cJSON_GetObjectItem(pSub, "x");
                 if (pObj) {
                     cmd = atoi(pObj->valuestring); // 0 - read; 1  - write
                 }
                 hexString = (u8*)zalloc(50);
                 strcpy(hexString, "netSerial not impl.");
-            } else if (pAction && strcmp(pAction->valuestring, "plc_run_stop_set")) {
+            } else if (pAction && !strcmp(pAction->valuestring, "plc_run_stop_set")) {
                 pObj = cJSON_GetObjectItem(pSub, "x");
                 if (pObj) {
                     cmd = atoi(pObj->valuestring);
                     ret = user_fx2n_set_run(cmd);
                 }
-            } else if (pAction && strcmp(pAction->valuestring, "plc_run_stop_get")) {
+            } else if (pAction && !strcmp(pAction->valuestring, "plc_run_stop_get")) {
                 ret = user_fx2n_run_status();
-            } else if (pAction && strcmp(pAction->valuestring, "serial_switch_set")) {
+            } else if (pAction && !strcmp(pAction->valuestring, "serial_switch_set")) {
                 pObj = cJSON_GetObjectItem(pSub, "x");
                 if (pObj) {
                     cmd = atoi(pObj->valuestring);
                     ret = user_fx2n_serial_switch(cmd);
                 }
-            } else if (pAction && strcmp(pAction->valuestring, "serial_switch_get")) {
+            } else if (pAction && !strcmp(pAction->valuestring, "serial_switch_get")) {
                 ret = user_fx2n_serial_switch_status();
-            } else if (pAction && strcmp(pAction->valuestring, "lan_ip")) {
+            } else if (pAction && !strcmp(pAction->valuestring, "lan_ip")) {
                 {
                     struct ip_info ipconfig;
                     hexString = (u8*)zalloc(50);
@@ -508,7 +510,17 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
         cJSON_Delete(root);
     }
 
+    if (!hexString) {
+        hexString = (u8*)zalloc(4);
+        strcpy(hexString, "  ");
+    }
     sprintf(pbuf, RESPONSE_FRAME, user_fx2n_run_status(), ret, hexString, nonce);
+#ifdef CLIENT_SSL_ENABLE
+        ssl_write(pclient_param->ssl, pbuf, strlen(pbuf));
+#else
+        write(pclient_param->sock_fd, pbuf, strlen(pbuf));
+#endif
+    printf("fx2n response: %s\n", pbuf);
 
     if (out) {
         free(out);
@@ -547,7 +559,7 @@ user_esp_platform_get_info(struct client_conn_param *pclient_param, uint8 *pbuff
         sprintf(pbuf, RESPONSE_FRAME, user_plugs_get_status_int(), c, user_plugs_get_status_string(value_string, c + 1), nonce);
         free(value_string);
 #elif FX2N_DEVICE
-        printf("fx2n get request %s\n", pbuffer);
+        //printf("fx2n get request %s\n", pbuffer);
         user_fx2n_handle_request(pclient_param, pbuffer);
 #elif LIGHT_DEVICE
         uint32 white_val;

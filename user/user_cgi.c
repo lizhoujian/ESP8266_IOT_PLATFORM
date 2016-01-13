@@ -356,7 +356,7 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
     u8 *hexString = NULL;
     u8 len = 0;
     u8 ret = false;
-    printf("fx2n post value: %s\n", pValue);
+    printf("fx2n request value: %s\n", pValue);
     cJSON *pJson =  cJSON_Parse(pValue);
     if (NULL != pJson)
     {
@@ -388,44 +388,46 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
         }
     }
     printf("fx2n request: %s, %d, %d, %d \n", action, cmd, addr_type, addr);
-    if (!strcmp(action, "control")) {
-        if (cmd == ENQ) {
-            ret = fx_enquiry();
-        }
-        else if (cmd == ACTION_FORCE_ON) {
-            ret = fx_force_on(addr_type, addr);
-        }
-        else if (cmd == ACTION_FORCE_OFF) {
-            ret = fx_force_off(addr_type, addr);
-        }
-        else if (cmd == ACTION_READ) {
-            out = (u8 *)zalloc(len);
-            if (out) {
-                ret = fx_read(addr_type, addr, out, len);
+    if (action) {
+        if (!strcmp(action, "control")) {
+            if (cmd == ENQ) {
+                ret = fx_enquiry();
             }
-        }
-        else if (cmd == ACTION_WRITE) {
-            if (bytes) {
-                ret = fx_write(addr_type, addr, bytes, len);
+            else if (cmd == ACTION_FORCE_ON) {
+                ret = fx_force_on(addr_type, addr);
             }
-        } else {
-            ret = false;
-        }
-    }else if (!strcmp(action, "plc_run_stop_set")) {
-        ret = user_fx2n_set_run(cmd);
-    }else if (!strcmp(action, "plc_run_stop_get")) {
-        ret = user_fx2n_run_status();
-    } else if (!strcmp(action, "serial_switch_set")) {
-        ret = user_fx2n_serial_switch(cmd);
-    }else if (!strcmp(action, "serial_switch_get")) {
-        ret = user_fx2n_serial_switch_status();
-    }else if (!strcmp(action, "lan_ip")) {
-        {
-            struct ip_info ipconfig;
-            hexString = (u8*)zalloc(50);
-            if (wifi_get_ip_info(STATION_IF, &ipconfig)) {
-                sprintf(hexString, IPSTR, IP2STR(&ipconfig.ip));
-                ret = true;
+            else if (cmd == ACTION_FORCE_OFF) {
+                ret = fx_force_off(addr_type, addr);
+            }
+            else if (cmd == ACTION_READ) {
+                out = (u8 *)zalloc(len);
+                if (out) {
+                    ret = fx_read(addr_type, addr, out, len);
+                }
+            }
+            else if (cmd == ACTION_WRITE) {
+                if (bytes) {
+                    ret = fx_write(addr_type, addr, bytes, len);
+                }
+            } else {
+                ret = false;
+            }
+        }else if (!strcmp(action, "plc_run_stop_set")) {
+            ret = user_fx2n_set_run(cmd);
+        }else if (!strcmp(action, "plc_run_stop_get")) {
+            ret = user_fx2n_run_status();
+        } else if (!strcmp(action, "serial_switch_set")) {
+            ret = user_fx2n_serial_switch(cmd);
+        }else if (!strcmp(action, "serial_switch_get")) {
+            ret = user_fx2n_serial_switch_status();
+        }else if (!strcmp(action, "lan_ip")) {
+            {
+                struct ip_info ipconfig;
+                hexString = (u8*)zalloc(50);
+                if (wifi_get_ip_info(STATION_IF, &ipconfig)) {
+                    sprintf(hexString, IPSTR, IP2STR(&ipconfig.ip));
+                    ret = true;
+                }
             }
         }
     }

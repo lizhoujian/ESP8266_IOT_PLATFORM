@@ -482,7 +482,8 @@ void uart_init_for_fx(void)
     uart_intr.UART_TX_FifoEmptyIntrThresh = 20;
     //UART_IntrConfig(UART0, &uart_intr);
 
-    UART_SetPrintPort(UART1);
+  //UART_SetPrintPort(UART0);
+     UART_SetPrintPort(UART1);
     UART_intr_handler_register(uart_rx_intr_handler_ssc, NULL);
     //UART_intr_handler_register(uart0_rx_intr_handler, NULL);
     ETS_UART_INTR_ENABLE();

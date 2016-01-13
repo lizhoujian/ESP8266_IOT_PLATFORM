@@ -22,7 +22,7 @@
 #include "user_devicefind.h"
 #include "user_config.h"
 
-//#define DEBUG
+#define DEBUG
 
 #ifdef DEBUG
 #define DF_DEBUG os_printf
