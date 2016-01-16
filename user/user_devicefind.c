@@ -40,7 +40,7 @@ const char *device_find_response_ok = "I'm Plug.";
 #elif PLUGS_DEVICE
 const char *device_find_response_ok = "I'm Plugs.";
 #elif FX2N_DEVICE
-const char *device_find_response_ok = "I'm fx2n.";
+const char *device_find_response_ok = "I'm Plugs.";
 #elif LIGHT_DEVICE
 const char *device_find_response_ok = "I'm Light.";
 #elif SENSOR_DEVICE
@@ -186,7 +186,7 @@ user_devicefind_task(void *pvParameters)
         ret = recvfrom(sock_fd, (u8 *)udp_msg, len_udp_msg, 0, (struct sockaddr *)&from, (socklen_t *)&fromlen);
         if (ret > 0)
         {
-            os_printf("recieve from->port %d  %s\n", ntohs(from.sin_port), inet_ntoa(from.sin_addr));
+            os_printf("recieve from->port %d  %s, msg=%s\n", ntohs(from.sin_port), inet_ntoa(from.sin_addr), udp_msg);
             user_devicefind_data_process(udp_msg, ret, &from);
         }
         if (stack_counter++ == 1)

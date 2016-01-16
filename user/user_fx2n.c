@@ -45,10 +45,34 @@ u8 user_fx2n_run_status(void)
     return true;
 }
 
+#define SWITCH_FLAG 0x0A
+LOCAL bool
+switch_is_ok(void)
+{
+    u8 f;
+    f = (fx2n_param.serial_switch_state >> 4) & 0xf;
+    return (f == SWITCH_FLAG);
+}
+
+LOCAL void
+switch_set(bool new_value)
+{
+    u8 f;
+
+    f = SWITCH_FLAG | new_value;
+    fx2n_param.serial_switch_state = f;
+}
+
+LOCAL bool
+switch_get(void)
+{
+    return fx2n_param.serial_switch_state & 0x1;
+}
+
 LOCAL void
 set_uart_take_state(void)
 {
-    if (fx2n_param.serial_switch_state) {
+    if (switch_get()) {
         fx_uart_take();
     } else {
         fx_uart_release();
@@ -58,21 +82,20 @@ set_uart_take_state(void)
 LOCAL void
 user_fx2n_serial_switch_init(void)
 {
-    if (fx2n_param.serial_switch_state == 0xFF) {
-        fx2n_param.serial_switch_state = 0;
+    if (!switch_is_ok()) {
+        switch_set(0);
     }
     PIN_FUNC_SELECT(FX2N_SERIAL_SWITCH_IO_MUX, FX2N_SERIAL_SWITCH_IO_FUNC);
-    GPIO_OUTPUT_SET(GPIO_ID_PIN(FX2N_LINK_LED_IO_NUM), fx2n_param.serial_switch_state);
-    set_uart_take_state();
+    user_fx2n_serial_switch(switch_get());
 }
 
 u8 user_fx2n_serial_switch(u8 cmd)
 {
-    fx2n_param.serial_switch_state = !!cmd;
-    GPIO_OUTPUT_SET(GPIO_ID_PIN(FX2N_LINK_LED_IO_NUM), fx2n_param.serial_switch_state);
+    switch_set(!!cmd);
+    GPIO_OUTPUT_SET(GPIO_ID_PIN(FX2N_LINK_LED_IO_NUM), switch_get());
     user_fx2n_save_param();
     set_uart_take_state();
-    return fx2n_param.serial_switch_state;
+    return switch_get();
 }
 
 u8 user_fx2n_serial_switch_status(void){

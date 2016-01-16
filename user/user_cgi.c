@@ -137,7 +137,7 @@ system_info_get(cJSON *pcjson, const char *pname )
     cJSON_AddStringToObject(pSubJson_Device, "product", "Plugs");
 #endif
 #if FX2N_DEVICE
-    cJSON_AddStringToObject(pSubJson_Device, "product", "fx2n");
+    cJSON_AddStringToObject(pSubJson_Device, "product", "Plugs");
 #endif
 #if LIGHT_DEVICE
     cJSON_AddStringToObject(pSubJson_Device, "product", "Light");
@@ -381,7 +381,7 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
             len = pSub->valueint;
         }
         if (cmd == ACTION_WRITE) {
-            pSub = cJSON_GetObjectItem(pJson, "data");
+            pSub = cJSON_GetObjectItem(pJson, "value");
             if (pSub && pSub->valuestring) {
                 hex_string_to_byte(pSub->valuestring, &bytes, len);
             }
@@ -403,6 +403,9 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
                 out = (u8 *)zalloc(len);
                 if (out) {
                     ret = fx_read(addr_type, addr, out, len);
+                    if (ret) {
+                        byte_to_hex_string(out, &hexString, len);
+                    }
                 }
             }
             else if (cmd == ACTION_WRITE) {
@@ -431,15 +434,13 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
             }
         }
     }
+
     cJSON_AddNumberToObject(pcjson, "run", user_fx2n_run_status());
     cJSON_AddNumberToObject(pcjson, "result", ret);
-    if (ret && out) {
-        byte_to_hex_string(out, &hexString, len);
-        if (hexString) {
-            cJSON_AddStringToObject(pcjson, "value", hexString);
-            free(hexString);
-        }
+    if (hexString) {
+        cJSON_AddStringToObject(pcjson, "value", hexString);
     }
+
     if (out) {
         free(out);
     }
@@ -449,7 +450,9 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
     if (hexString) {
         free(hexString);
     }
-    if (NULL != pJson)cJSON_Delete(pJson);
+    if (NULL != pJson) {
+        cJSON_Delete(pJson);
+    }
     printf("fx2n_status_set ok\n");
     return 2; // for json return
 }
@@ -1218,7 +1221,7 @@ const EspCgiApiEnt espCgiApiNodes[] =
 #elif LIGHT_DEVICE
     {"config", "light", light_status_get, light_status_set},
 #elif FX2N_DEVICE
-    {"config", "fx2n", NULL, fx2n_status_set},
+    {"config", "fx2n", fx2n_status_get, fx2n_status_set},
 #endif
 
 #if SENSOR_DEVICE
