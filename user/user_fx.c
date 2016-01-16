@@ -462,6 +462,20 @@ void fx_init(void)
     TRACE("fx init ok.\n");
 }
 
+void fx_uart_take(void)
+{
+    UART_WaitTxFifoEmpty(UART0);
+    UART_SetPrintPort(UART1);
+    uart_set_recv_cb(uart_cb);
+}
+
+void fx_uart_release(void)
+{
+    UART_WaitTxFifoEmpty(UART0);
+    UART_SetPrintPort(UART0);
+    uart_set_recv_cb(NULL);
+}
+
 static u32 get_base(void *r, bool bit)
 {
     register_t *t = (register_t *)r;

@@ -105,6 +105,9 @@ enum
 
 void fx_init(void);
 
+void fx_uart_take(void);
+void fx_uart_release(void);
+
 bool fx_enquiry(void);
 bool fx_force_on(u8 addr_type, u16 addr);
 bool fx_force_off(u8 addr_type, u16 addr);

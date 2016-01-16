@@ -24,6 +24,7 @@
 #ifdef ESP_PLATFORM
 #include "user_esp_platform.h"
 #endif
+#include "driver/uart.h"
 
 #if HTTPD_SERVER
 #include "espfsformat.h"
@@ -84,6 +85,9 @@ HttpdBuiltInUrl builtInUrls[] =
 *******************************************************************************/
 void user_init(void)
 {
+#if FX2N_DEVICE
+    UART_SetPrintPort(UART1);
+#endif
     printf("SDK version:%s\n", system_get_sdk_version());
     wifi_set_opmode(STATIONAP_MODE);
 #if ESP_PLATFORM
