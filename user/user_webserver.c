@@ -152,7 +152,7 @@ system_info_get(cJSON *pcjson, const char *pname )
     cJSON_AddStringToObject(pSubJson_Device, "product", "Plugs");
 #endif
 #if FX2N_DEVICE
-    cJSON_AddStringToObject(pSubJson_Device, "product", "fx2n");
+    cJSON_AddStringToObject(pSubJson_Device, "product", "Plugs");
 #endif
 #if LIGHT_DEVICE
     cJSON_AddStringToObject(pSubJson_Device, "product", "Light");

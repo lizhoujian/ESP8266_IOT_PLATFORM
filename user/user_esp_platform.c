@@ -253,7 +253,7 @@ user_esp_platform_set_token(uint8_t *token)
     if (token == NULL) {
         return;
     }
-    esp_param.activeflag = 1;
+    esp_param.activeflag = 0;
     esp_param.tokenrdy = 1;
     memcpy(esp_param.token, token, strlen(token));
     system_param_save_with_protect(ESP_PARAM_START_SEC, &esp_param, sizeof(esp_param));
@@ -1515,16 +1515,6 @@ static bool esp_token_invalid()
     return true;
 }
 
-static void user_esp_platform_set_token_default()
-{
-    uint8 t[41] = {0,};
-    uint8 bssid[6] = {0,};
-    if (wifi_get_macaddr(STATION_IF, bssid)) {
-        sprintf(t, MACSTR"-%04x", MAC2STR(bssid), rand());
-        user_esp_platform_set_token(t);
-    }
-}
-
 void  
 user_esp_platform_maintainer(void *pvParameters)
 {
@@ -1548,7 +1538,6 @@ user_esp_platform_maintainer(void *pvParameters)
     //vTaskDelay(10000 / portTICK_RATE_MS);//wait pc serial ready
 
     user_esp_platform_param_recover();
-    user_esp_platform_set_token_default();
 
 #if PLUG_DEVICE
     user_plug_init();
@@ -1599,7 +1588,8 @@ user_esp_platform_maintainer(void *pvParameters)
         if(0 == ret) {
             /*should be true here, Zero just for debug usage*/
             if(1){
-                /*AP_num == 0, no ap cached,start smartcfg*/
+                /*AP_num == 0, no ap cached or connect ap failed, start smartcfg*/
+                user_link_led_output(LED_5HZ);
                 wifi_set_opmode(STATION_MODE);
                 xTaskCreate(smartconfig_task, "smartconfig_task", 256, NULL, 2, NULL);
 
@@ -1639,7 +1629,9 @@ user_esp_platform_maintainer(void *pvParameters)
 
 #if (PLUG_DEVICE || PLUGS_DEVICE || SENSOR_DEVICE || FX2N_DEVICE)
         //chenck ip or DNS, led start blinking
-        if(wifi_get_opmode()==STATION_MODE)user_link_led_output(LED_5HZ);
+        if(wifi_get_opmode()==STATION_MODE || wifi_get_opmode()==STATIONAP_MODE) {
+            user_link_led_output(LED_5HZ);
+        }
 #endif
 
         do{
