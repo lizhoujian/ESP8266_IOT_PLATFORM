@@ -46,6 +46,16 @@ u8 user_fx2n_run_status(void)
 }
 
 LOCAL void
+set_uart_take_state(void)
+{
+    if (fx2n_param.serial_switch_state) {
+        fx_uart_take();
+    } else {
+        fx_uart_release();
+    }
+}
+
+LOCAL void
 user_fx2n_serial_switch_init(void)
 {
     if (fx2n_param.serial_switch_state == 0xFF) {
@@ -53,6 +63,7 @@ user_fx2n_serial_switch_init(void)
     }
     PIN_FUNC_SELECT(FX2N_SERIAL_SWITCH_IO_MUX, FX2N_SERIAL_SWITCH_IO_FUNC);
     GPIO_OUTPUT_SET(GPIO_ID_PIN(FX2N_LINK_LED_IO_NUM), fx2n_param.serial_switch_state);
+    set_uart_take_state();
 }
 
 u8 user_fx2n_serial_switch(u8 cmd)
@@ -60,6 +71,7 @@ u8 user_fx2n_serial_switch(u8 cmd)
     fx2n_param.serial_switch_state = !!cmd;
     GPIO_OUTPUT_SET(GPIO_ID_PIN(FX2N_LINK_LED_IO_NUM), fx2n_param.serial_switch_state);
     user_fx2n_save_param();
+    set_uart_take_state();
     return fx2n_param.serial_switch_state;
 }
 

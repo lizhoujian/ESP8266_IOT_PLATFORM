@@ -105,8 +105,8 @@ enum
 
 void fx_init(void);
 
-void fx_uart_take(void);
-void fx_uart_release(void);
+void fx_uart_take(void); /* fx uart connect to wifi */
+void fx_uart_release(void); /* fx uart connect to pc */
 
 bool fx_enquiry(void);
 bool fx_force_on(u8 addr_type, u16 addr);
