@@ -160,6 +160,7 @@ typedef struct register_t
     u8 unit_len; /* bytes for per address */
     u32 funcs; /* support functions force on\off, read\write */
     bool write_by_bit; /* write operate replace by bit operate */
+    u32 bits;
 } register_t;
 
 #define WAIT_RECV_TIMEOUT 3000
@@ -503,24 +504,24 @@ static u32 calc_address(void *r, u16 offset, bool bit)
 
 static register_t registers[] =
 {
-    {REG_S, REG_S_BASE_ADDRESS, REG_S_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_ALL, true},
-    {REG_X, REG_X_BASE_ADDRESS, REG_X_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_READ, false},
-    {REG_Y, REG_Y_BASE_ADDRESS, REG_Y_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_ALL, true},
-    {REG_T, REG_T_BASE_ADDRESS, REG_T_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_ALL, true},
-    {REG_M, REG_M_BASE_ADDRESS, REG_M_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_ALL, true},
-    {REG_C, REG_C_BASE_ADDRESS, REG_C_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_ALL, true},
-    {REG_MS, REG_MS_BASE_ADDRESS, REG_MS_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_ALL, false},
-    {REG_D, REG_D_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 2, FUNCTION_WR, false},
-    {REG_YP, REG_YP_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 1, FUNCTION_WR, false},
-    {REG_TO, REG_TO_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 1, FUNCTION_WR, false},
-    {REG_MP, REG_MP_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 1, FUNCTION_WR, false},
-    {REG_CO, REG_CO_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 1, FUNCTION_WR, false},
-    {REG_TR, REG_TR_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 1, FUNCTION_WR, false},
-    {REG_CR, REG_CR_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 1, FUNCTION_WR, false},
-    {REG_TV16, REG_TV16_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 2, FUNCTION_WR, false},
-    {REG_CV16, REG_CV16_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 2, FUNCTION_WR, false},
-    {REG_CV32, REG_CV32_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 4, FUNCTION_WR, false},
-    {REG_DS, REG_DS_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 2, FUNCTION_WR, false},
+    {REG_S, REG_S_BASE_ADDRESS, REG_S_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_ALL, true, REG_S_BITS},
+    {REG_X, REG_X_BASE_ADDRESS, REG_X_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_READ, false, REG_X_BITS},
+    {REG_Y, REG_Y_BASE_ADDRESS, REG_Y_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_ALL, true, REG_Y_BITS},
+    {REG_T, REG_T_BASE_ADDRESS, REG_T_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_ALL, true, REG_T_BITS},
+    {REG_M, REG_M_BASE_ADDRESS, REG_M_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_ALL, true, REG_M_BITS},
+    {REG_C, REG_C_BASE_ADDRESS, REG_C_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_ALL, true, REG_C_BITS},
+    {REG_MS, REG_MS_BASE_ADDRESS, REG_MS_BIT_BASE_ADDRESS, calc_address, 1, FUNCTION_ALL, false, REG_MS_BITS},
+    {REG_D, REG_D_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 2, FUNCTION_WR, false, REG_D_BITS},
+    {REG_YP, REG_YP_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 1, FUNCTION_WR, false, REG_YP_BITS},
+    {REG_TO, REG_TO_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 1, FUNCTION_WR, false, REG_TO_BITS},
+    {REG_MP, REG_MP_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 1, FUNCTION_WR, false, REG_MP_BITS},
+    {REG_CO, REG_CO_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 1, FUNCTION_WR, false, REG_CO_BITS},
+    {REG_TR, REG_TR_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 1, FUNCTION_WR, false, REG_TR_BITS},
+    {REG_CR, REG_CR_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 1, FUNCTION_WR, false, REG_CR_BITS},
+    {REG_TV16, REG_TV16_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 2, FUNCTION_WR, false, REG_TV16_BITS},
+    {REG_CV16, REG_CV16_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 2, FUNCTION_WR, false, REG_CV16_BITS},
+    {REG_CV32, REG_CV32_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 4, FUNCTION_WR, false, REG_CV32_BITS},
+    {REG_DS, REG_DS_BASE_ADDRESS, REG_INVALID_ADDRESS, calc_address, 2, FUNCTION_WR, false, REG_DS_BITS},
 };
 
 static register_t *find_registers(u8 addr_type)
@@ -815,6 +816,17 @@ static bool fx_write_by_bit(u8 addr_type, u16 addr, u8 *data, u16 len)
 __exit:
     free(old);
     return ret;
+}
+
+u32 fx_reg_bits(u8 addr_type)
+{
+    register_t *r;
+    r = find_registers(addr_type);
+    if (r) {
+        return r->bits;
+    } else {
+        return 0;
+    }
 }
 
 bool fx_enquiry(void)

@@ -415,6 +415,14 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
             } else {
                 ret = false;
             }
+        } else if (!strcmp(action, "reg_bits")) {
+            {
+                u32 bits;
+                bits = user_fx2n_reg_bits(cmd);
+                ret = true;
+                hexString = (u8*)zalloc(10);
+                sprintf(hexString, "%d", bits);
+            }
         }else if (!strcmp(action, "plc_run_stop_set")) {
             ret = user_fx2n_set_run(cmd);
         }else if (!strcmp(action, "plc_run_stop_get")) {

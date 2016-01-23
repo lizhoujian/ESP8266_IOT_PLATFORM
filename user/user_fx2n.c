@@ -36,6 +36,10 @@ user_fx2n_save_param(void)
                     (uint32 *)&fx2n_param, sizeof(struct fx2n_saved_param));
 }
 
+u32 user_fx2n_reg_bits(u8 addr_type) {
+    return fx_reg_bits(addr_type);
+}
+
 u8 user_fx2n_set_run(u8 run)
 {
     return true;

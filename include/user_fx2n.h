@@ -48,6 +48,8 @@ struct fx2n_saved_param
 
 void user_fx2n_init(void);
 
+u32 user_fx2n_reg_bits(u8 addr_type);
+
 u8 user_fx2n_set_run(u8 run);
 u8 user_fx2n_run_status(void);
 

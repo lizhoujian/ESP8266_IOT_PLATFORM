@@ -103,11 +103,35 @@ enum
 #define REG_INVALID_ADDRESS 0x0ffff
 #define MAX_DATA_ONETIME 32
 
+#define REG_S_BITS (125 * 8)
+#define REG_X_BITS (13)
+#define REG_Y_BITS (8)
+#define REG_T_BITS (32 * 8)
+#define REG_M_BITS (128 * 8)
+#define REG_C_BITS (32 * 8)
+#define REG_MS_BITS (32 * 8)
+
+#define REG_D_BITS (511 * 2 * 8)
+#define REG_DS_BITS (255 * 2 * 8)
+
+#define REG_TV16_BITS (255 * 2 * 8)
+#define REG_CV16_BITS (199 * 2 * 8)
+#define REG_CV32_BITS (56 * 4 * 8)
+
+#define REG_YP_BITS (16 * 8)
+#define REG_TO_BITS (32 * 8)
+#define REG_MP_BITS (128 * 8)
+#define REG_CO_BITS (32 * 8)
+
+#define REG_TR_BITS (32 * 8)
+#define REG_CR_BITS (32 * 8)
+
 void fx_init(void);
 
 void fx_uart_take(void); /* fx uart connect to wifi */
 void fx_uart_release(void); /* fx uart connect to pc */
 
+u32 fx_reg_bits(u8 addr_type);
 bool fx_enquiry(void);
 bool fx_force_on(u8 addr_type, u16 addr);
 bool fx_force_off(u8 addr_type, u16 addr);

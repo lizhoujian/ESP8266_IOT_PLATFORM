@@ -466,7 +466,19 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
                 if (ret && out) {
                     byte_to_hex_string(out, &hexString, len);
                 }
-            } else if (pAction && !strcmp(pAction->valuestring, "net_serial")) {
+            } else if (pAction && !strcmp(pAction->valuestring, "reg_bits")) {
+                   {
+                        u32 bits;
+                        pObj = cJSON_GetObjectItem(pSub, "x");
+                        if (pObj && pObj->valuestring) {
+                            cmd = atoi(pObj->valuestring);
+                            bits = user_fx2n_reg_bits(cmd);
+                            ret = true;
+                            hexString = (u8*)zalloc(10);
+                            sprintf(hexString, "%d", bits);
+                        }
+                  }
+            }else if (pAction && !strcmp(pAction->valuestring, "net_serial")) {
                 pObj = cJSON_GetObjectItem(pSub, "x");
                 if (pObj) {
                     cmd = atoi(pObj->valuestring); // 0 - read; 1  - write
