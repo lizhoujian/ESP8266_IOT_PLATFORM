@@ -29,6 +29,7 @@
 #include "upgrade.h"
 
 #include "user_esp_platform.h"
+#include "user_uartovernet.h"
 
 #if ESP_PLATFORM
 
@@ -404,6 +405,8 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
         return;
     }
 
+    user_fx2n_uart_switch_to_fx();
+
     root = cJSON_Parse(pbuffer);
     if (root) {
         pSub = cJSON_GetObjectItem(root, "get");
@@ -521,6 +524,8 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
         }
         cJSON_Delete(root);
     }
+
+    user_fx2n_uart_switch_to_overnet();
 
     if (!hexString) {
         hexString = (u8*)zalloc(4);

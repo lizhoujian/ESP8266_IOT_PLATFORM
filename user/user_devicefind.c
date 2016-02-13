@@ -217,7 +217,7 @@ user_devicefind_task1(void *pvParameters)
 }
 */
 
-void   user_devicefind_start(void)
+void user_devicefind_start(void)
 {
     if (QueueStop == NULL)
         QueueStop = xQueueCreate(1, 1);
@@ -225,7 +225,7 @@ void   user_devicefind_start(void)
         xTaskCreate(user_devicefind_task, "user_devicefind", 256, NULL, 3, NULL);
 }
 
-sint8   user_devicefind_stop(void)
+sint8 user_devicefind_stop(void)
 {
     bool ValueToSend = true;
     portBASE_TYPE xStatus;

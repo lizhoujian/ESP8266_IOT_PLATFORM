@@ -85,6 +85,7 @@ HttpdBuiltInUrl builtInUrls[] =
 *******************************************************************************/
 void user_init(void)
 {
+    uart_init();
     printf("SDK version:%s\n", system_get_sdk_version());
     wifi_set_opmode(STATIONAP_MODE);
 #if ESP_PLATFORM
@@ -97,6 +98,7 @@ void user_init(void)
     /*Listen to the port 1025, as well as udp broadcast.
     /*If receive a string of device_find_request, it rely its IP address and MAC.*/
     user_devicefind_start();
+    user_uartovernet_start();
 #if WEB_SERVICE
     /*Establish a TCP server for http(with JSON) POST or GET command to communicate with the device.*/
     /*You can find the command in "2B-SDK-Espressif IoT Demo.pdf" to see the details.*/

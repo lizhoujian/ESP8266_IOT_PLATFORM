@@ -22,6 +22,7 @@
 #if ESP_PLATFORM
 #include "user_esp_platform.h"
 #endif
+#include "user_uartovernet.h"
 
 #if PLUG_DEVICE
 #include "user_plug.h"
@@ -356,6 +357,7 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
     u8 *hexString = NULL;
     u8 len = 0;
     u8 ret = false;
+
     printf("fx2n request value: %s\n", pValue);
     cJSON *pJson =  cJSON_Parse(pValue);
     if (NULL != pJson)
@@ -387,6 +389,9 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
             }
         }
     }
+
+    user_fx2n_uart_switch_to_fx();
+    
     printf("fx2n request: %s, %d, %d, %d \n", action, cmd, addr_type, addr);
     if (action) {
         if (!strcmp(action, "control")) {
@@ -442,6 +447,8 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
             }
         }
     }
+
+    user_fx2n_uart_switch_to_overnet();
 
     cJSON_AddNumberToObject(pcjson, "run", user_fx2n_run_status());
     cJSON_AddNumberToObject(pcjson, "result", ret);

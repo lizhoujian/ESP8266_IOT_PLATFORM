@@ -56,6 +56,9 @@ u8 user_fx2n_run_status(void);
 u8 user_fx2n_serial_switch(u8 cmd);
 u8 user_fx2n_serial_switch_status(void);
 
+void user_fx2n_uart_switch_to_fx(void);
+void user_fx2n_uart_switch_to_overnet(void);
+
 BOOL user_get_key_status(void);
 
 #endif

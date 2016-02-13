@@ -12,6 +12,7 @@
 #include "user_config.h"
 #if FX2N_DEVICE
 #include "user_fx2n.h"
+#include "user_uartovernet.h"
 
 #define __countof(a) (sizeof(a) / sizeof(a[0]))
 #define __perSize(a) (sizeof(a[0]))
@@ -73,11 +74,42 @@ switch_get(void)
     return fx2n_param.serial_switch_state & 0x1;
 }
 
+#define UART_USED_FX 1
+#define UART_USED_OVERNET 2
+LOCAL u8 uart_used = UART_USED_OVERNET;
+
+void user_fx2n_uart_switch_to_fx(void)
+{
+    if (switch_get()) {
+        fx_set_uart_cb();
+    }
+    uart_used = UART_USED_FX;
+}
+
+void user_fx2n_uart_switch_to_overnet(void)
+{
+    if (switch_get()) {
+        user_uartovernet_set_uart_cb();
+    }
+    uart_used = UART_USED_OVERNET;
+}
+
+LOCAL
+void set_uart_switch_to(void)
+{
+    if (uart_used == UART_USED_FX) {
+        user_fx2n_uart_switch_to_fx();
+    } else if (uart_used == UART_USED_OVERNET) {
+        user_fx2n_uart_switch_to_overnet();
+    }
+}
+
 LOCAL void
 set_uart_take_state(void)
 {
     if (switch_get()) {
         fx_uart_take();
+        set_uart_switch_to();
     } else {
         fx_uart_release();
     }
@@ -96,13 +128,14 @@ user_fx2n_serial_switch_init(void)
 u8 user_fx2n_serial_switch(u8 cmd)
 {
     switch_set(!!cmd);
-    GPIO_OUTPUT_SET(GPIO_ID_PIN(FX2N_LINK_LED_IO_NUM), switch_get());
+    GPIO_OUTPUT_SET(GPIO_ID_PIN(FX2N_SERIAL_SWITCH_IO_NUM), switch_get());
     user_fx2n_save_param();
     set_uart_take_state();
     return switch_get();
 }
 
-u8 user_fx2n_serial_switch_status(void){
+u8 user_fx2n_serial_switch_status(void)
+{
     return fx2n_param.serial_switch_state;
 }
 

@@ -434,6 +434,11 @@ static void free_response(void)
     free_recv_buff();
 }
 
+void fx_set_uart_cb(void)
+{
+    uart_set_recv_cb(uart_cb);
+}
+
 void fx_init(void)
 {
 #if 0
@@ -458,7 +463,7 @@ void fx_init(void)
     }
 #else
     uart_init_for_fx();
-    uart_set_recv_cb(uart_cb);
+    fx_set_uart_cb();
 #endif
     TRACE("fx init ok.\n");
 }

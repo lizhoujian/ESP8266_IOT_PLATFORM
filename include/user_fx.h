@@ -126,6 +126,8 @@ enum
 #define REG_TR_BITS (32 * 8)
 #define REG_CR_BITS (32 * 8)
 
+void fx_set_uart_cb(void);
+
 void fx_init(void);
 
 void fx_uart_take(void); /* fx uart connect to wifi */

@@ -13,6 +13,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 
 #include "driver/uart.h"
 
@@ -32,6 +33,7 @@ typedef struct _os_event_
 
 xTaskHandle xUartTaskHandle;
 xQueueHandle xQueueUart;
+xSemaphoreHandle xSemaphore = NULL;
 
 STATUS
 uart_tx_one_char(uint8 uart, uint8 TxChar)
@@ -180,7 +182,16 @@ uart_task(void *pvParameters)
             case UART_EVENT_RX_CHAR:
                 if (recv_cb != NULL)
                 {
-                    (*recv_cb)(e.param); // call receive callback
+                    uart_recv_cb uart_cb;
+                    static signed portBASE_TYPE xHigherPriorityTaskWoken;
+                    xHigherPriorityTaskWoken = pdFALSE;
+                    xSemaphoreTakeFromISR( xSemaphore, &xHigherPriorityTaskWoken );
+                    uart_cb = recv_cb;
+                    xHigherPriorityTaskWoken = pdFALSE;
+                    xSemaphoreGiveFromISR( xSemaphore, &xHigherPriorityTaskWoken );
+                    if (uart_cb) {
+                        (*uart_cb)(e.param); // call receive callback
+                    }
                     printf("%d", e.param);
                 }
                 else
@@ -441,6 +452,14 @@ uart0_rx_intr_handler(void *para)
 }
 
 void
+uart_init(void)
+{
+    if (!xSemaphore) {
+        vSemaphoreCreateBinary(xSemaphore);
+    }
+}
+
+void
 uart_init_new(void)
 {
     UART_WaitTxFifoEmpty(UART0);
@@ -505,6 +524,8 @@ void uart_init_for_fx(void)
 
 void uart_set_recv_cb(uart_recv_cb cb)
 {
+    xSemaphoreTake( xSemaphore, (portTickType)portMAX_DELAY );
     recv_cb = cb;
+    xSemaphoreGive( xSemaphore );
 }
 

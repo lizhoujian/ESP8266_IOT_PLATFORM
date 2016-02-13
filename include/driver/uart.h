@@ -121,6 +121,8 @@ void uart_init_new(void);
 
 STATUS uart_tx_one_char(uint8 uart, uint8 TxChar);
 
+void uart_init(void);
+
 typedef void (*uart_recv_cb)(u8 c);
 void uart_init_for_fx(void);
 void uart_set_recv_cb(uart_recv_cb cb);
