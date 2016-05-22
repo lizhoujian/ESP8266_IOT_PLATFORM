@@ -396,26 +396,43 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
     if (action) {
         if (!strcmp(action, "control")) {
             if (cmd == ENQ) {
-                ret = fx_enquiry();
-            }
-            else if (cmd == ACTION_FORCE_ON) {
-                ret = fx_force_on(addr_type, addr);
-            }
-            else if (cmd == ACTION_FORCE_OFF) {
-                ret = fx_force_off(addr_type, addr);
-            }
-            else if (cmd == ACTION_READ) {
+                if (addr_type == REG_GPIO) {
+                    ret = true;
+                } else {
+                    ret = fx_enquiry();
+                }
+            } else if (cmd == ACTION_FORCE_ON) {
+                if (addr_type == REG_GPIO) {
+                    ret = user_gpio_set(addr, 1);
+                } else {
+                    ret = fx_force_on(addr_type, addr);
+                }
+            } else if (cmd == ACTION_FORCE_OFF) {
+                if (addr_type == REG_GPIO) {
+                    ret = user_gpio_set(addr, 0);
+                } else {
+                    ret = fx_force_off(addr_type, addr);
+                }
+            } else if (cmd == ACTION_READ) {
                 out = (u8 *)zalloc(len);
                 if (out) {
-                    ret = fx_read(addr_type, addr, out, len);
+                    if (addr_type == REG_GPIO) {
+                        ret = user_gpio_read(addr, out, len);
+                    } else {
+                        ret = fx_read(addr_type, addr, out, len);
+                    }
                     if (ret) {
                         byte_to_hex_string(out, &hexString, len);
                     }
                 }
-            }
-            else if (cmd == ACTION_WRITE) {
+            } else if (cmd == ACTION_WRITE) {
                 if (bytes) {
-                    ret = fx_write(addr_type, addr, bytes, len);
+                    if (addr_type == REG_GPIO) {
+                        // TODO: set gpio status
+                        ret = true;
+                    } else {
+                        ret = fx_write(addr_type, addr, bytes, len);
+                    }
                 }
             } else {
                 ret = false;
@@ -423,7 +440,11 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
         } else if (!strcmp(action, "reg_bits")) {
             {
                 u32 bits;
-                bits = user_fx2n_reg_bits(cmd);
+                if (cmd == REG_GPIO) {
+                    bits = user_gpio_count();
+                } else {
+                    bits = user_fx2n_reg_bits(cmd);
+                }
                 ret = true;
                 hexString = (u8*)zalloc(10);
                 sprintf(hexString, "%d", bits);
@@ -445,7 +466,17 @@ fx2n_status_set(cJSON *pcjson, const char *pValue)
                     ret = true;
                 }
             }
-        }
+        } else if (!strcmp(action, "gpio_count")) {
+            hexString = (u8*)zalloc(10);
+            sprintf(hexString, "%d", user_gpio_count());
+            ret = true;
+        } else if (!strcmp(action, "gpio_status_get")) {
+            hexString = (u8*)zalloc(user_gpio_count());
+            user_gpio_string(hexString, user_gpio_count());
+            ret = true;
+       } else if (!strcmp(action, "gpio_status_set")) {
+            ret = user_gpio_set(cmd, addr_type);
+       }
     }
 
     user_fx2n_uart_switch_to_overnet();

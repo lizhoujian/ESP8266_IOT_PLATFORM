@@ -16,6 +16,10 @@
 #define SENSOR_DEVICE           0 //TBD
 #define FX2N_DEVICE             1
 
+
+#define GPIO_CONTROL_EXPORT 0
+
+
 #if LIGHT_DEVICE
 #define USE_US_TIMER
 #endif

@@ -67,6 +67,9 @@ enum
     REG_DS
 };
 
+// for gpio status
+#define REG_GPIO 0xff
+
 // register bytes address
 #define REG_S_BASE_ADDRESS 0x0
 #define REG_X_BASE_ADDRESS 0x80

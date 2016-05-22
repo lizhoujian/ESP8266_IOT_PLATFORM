@@ -13,9 +13,12 @@
 #if FX2N_DEVICE
 #include "user_fx2n.h"
 #include "user_uartovernet.h"
+#include "user_gpio.h"
 
 #define __countof(a) (sizeof(a) / sizeof(a[0]))
 #define __perSize(a) (sizeof(a[0]))
+
+#define USE_IO_STATUS 0
 
 LOCAL struct fx2n_saved_param fx2n_param;
 LOCAL struct keys_param keys;
@@ -50,7 +53,7 @@ u8 user_fx2n_run_status(void)
     return true;
 }
 
-#define SWITCH_FLAG 0x0A
+#define SWITCH_FLAG 0xA
 LOCAL bool
 switch_is_ok(void)
 {
@@ -119,16 +122,20 @@ LOCAL void
 user_fx2n_serial_switch_init(void)
 {
     if (!switch_is_ok()) {
-        switch_set(0);
+        switch_set(1);
     }
+#if USE_IO_STATUS    
     PIN_FUNC_SELECT(FX2N_SERIAL_SWITCH_IO_MUX, FX2N_SERIAL_SWITCH_IO_FUNC);
+#endif
     user_fx2n_serial_switch(switch_get());
 }
 
 u8 user_fx2n_serial_switch(u8 cmd)
 {
     switch_set(!!cmd);
+#if USE_IO_STATUS    
     GPIO_OUTPUT_SET(GPIO_ID_PIN(FX2N_SERIAL_SWITCH_IO_NUM), switch_get());
+#endif
     user_fx2n_save_param();
     set_uart_take_state();
     return switch_get();
@@ -136,9 +143,10 @@ u8 user_fx2n_serial_switch(u8 cmd)
 
 u8 user_fx2n_serial_switch_status(void)
 {
-    return fx2n_param.serial_switch_state;
+    return switch_get();
 }
 
+#if USE_IO_STATUS
 /******************************************************************************
  * FunctionName : user_fx2n_short_press
  * Description  : key's short press function, needed to be installed
@@ -201,6 +209,8 @@ user_link_led_timer_init(int time)
     link_led_level = 0;
     GPIO_OUTPUT_SET(GPIO_ID_PIN(FX2N_LINK_LED_IO_NUM), link_led_level);
 }
+#endif
+
 /*
 void
 user_link_led_timer_done(void)
@@ -219,6 +229,7 @@ user_link_led_timer_done(void)
 void
 user_link_led_output(uint8 mode)
 {
+#if USE_IO_STATUS
     switch (mode)
     {
     case LED_OFF:
@@ -230,18 +241,19 @@ user_link_led_output(uint8 mode)
         GPIO_OUTPUT_SET(GPIO_ID_PIN(FX2N_LINK_LED_IO_NUM), 0);
         break;
     case LED_1HZ:
-        user_link_led_timer_init(1000);
+       user_link_led_timer_init(1000);
         break;
     case LED_5HZ:
-        user_link_led_timer_init(200);
+       user_link_led_timer_init(200);
         break;
     case LED_20HZ:
-        user_link_led_timer_init(50);
+       user_link_led_timer_init(50);
         break;
     default:
         printf("ERROR:LED MODE WRONG!\n");
         break;
     }
+#endif    
 }
 
 /******************************************************************************
@@ -253,9 +265,14 @@ user_link_led_output(uint8 mode)
 BOOL
 user_get_key_status(void)
 {
+#if USE_IO_STATUS
     return get_key_status(single_key[0]);
+#else
+    return false;
+#endif
 }
 
+#if USE_IO_STATUS
 LOCAL void
 user_fx2n_key_init(void)
 {
@@ -265,6 +282,7 @@ user_fx2n_key_init(void)
     keys.single_key = single_key;
     key_init(&keys);
 }
+#endif
 
 /******************************************************************************
  * FunctionName : user_fx2n_init
@@ -277,10 +295,16 @@ user_fx2n_init(void)
 {
     printf("user_fx2n_init.\n");
     fx_init();
+#if GPIO_CONTROL_EXPORT    
+    user_gpio_init();
+#endif
+#if USE_IO_STATUS    
     user_link_led_init();
     wifi_status_led_install(FX2N_WIFI_LED_IO_NUM, FX2N_WIFI_LED_IO_MUX, FX2N_WIFI_LED_IO_FUNC);
     user_fx2n_key_init();
+#endif    
     user_fx2n_read_param();
     user_fx2n_serial_switch_init();
 }
 #endif
+

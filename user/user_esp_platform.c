@@ -56,7 +56,7 @@
 #endif
 #if FX2N_DEVICE
 #include "user_fx2n.h"
-
+#include "user_gpio.h"
 #define RESPONSE_FRAME  "{\"status\": 200, \"datapoint\": {\"x\": %d,\"y\": %d,\"z\":\"%s\"}, \"nonce\": %d, \"deliver_to_device\": true}\n"
 #define FIRST_FRAME     "{\"nonce\": %d, \"path\": \"/v1/device/identify\", \"method\": \"GET\",\"meta\": {\"Authorization\": \"token %s\"}}\n"
 #endif
@@ -443,25 +443,46 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
                 }
                 printf("fx2n control request: %d, %d, %d \n", cmd, addr_type, addr);
                 if (cmd == ENQ) {
-                    ret = fx_enquiry();
+                    if (addr_type == REG_GPIO) {
+                        ret = true;
+                    } else {
+                        ret = fx_enquiry();
+                    }
                 }
                 else if (cmd == ACTION_FORCE_ON) {
-                    ret = fx_force_on(addr_type, addr);
+                    if (addr_type == REG_GPIO) {
+                        ret = user_gpio_set(addr, 1);
+                    } else {
+                        ret = fx_force_on(addr_type, addr);
+                    }
                 }
                 else if (cmd == ACTION_FORCE_OFF) {
-                    ret = fx_force_off(addr_type, addr);
+                    if (addr_type == REG_GPIO) {
+                        ret = user_gpio_set(addr, 0);
+                    } else {
+                        ret = fx_force_off(addr_type, addr);
+                    }
                 }
                 else if (cmd == ACTION_READ) {
                     printf("execute read.\n");
                     out = (u8 *)zalloc(len);
                     if (out) {
-                        ret = fx_read(addr_type, addr, out, len);
+                        if (addr_type == REG_GPIO) {
+                            ret = user_gpio_read(addr, out, len);
+                        } else {
+                            ret = fx_read(addr_type, addr, out, len);
+                        }
                     }
                 }
                 else if (cmd == ACTION_WRITE) {
                     printf("execute write.\n");
                     if (bytes) {
-                        ret = fx_write(addr_type, addr, bytes, len);
+                        if (addr_type == REG_GPIO) {
+                            // TODO: set gpio status
+                            ret = true;
+                        } else {
+                            ret = fx_write(addr_type, addr, bytes, len);
+                        }
                     }
                 } else {
                     ret = false;
@@ -475,7 +496,11 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
                         pObj = cJSON_GetObjectItem(pSub, "x");
                         if (pObj && pObj->valuestring) {
                             cmd = atoi(pObj->valuestring);
-                            bits = user_fx2n_reg_bits(cmd);
+                            if (cmd == REG_GPIO) {
+                                bits = user_gpio_count();
+                            } else {
+                                bits = user_fx2n_reg_bits(cmd);
+                            }
                             ret = true;
                             hexString = (u8*)zalloc(10);
                             sprintf(hexString, "%d", bits);
@@ -511,6 +536,24 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
                     if (wifi_get_ip_info(STATION_IF, &ipconfig)) {
                         sprintf(hexString, IPSTR, IP2STR(&ipconfig.ip));
                         ret = true;
+                    }
+                } 
+            } else if (pAction && !strcmp(pAction->valuestring, "gpio_count")) {
+                hexString = (u8*)zalloc(10);
+                sprintf(hexString, "%d", user_gpio_count());
+                ret = true;
+            } else if (pAction && !strcmp(pAction->valuestring, "gpio_status_get")) {
+                hexString = (u8*)zalloc(user_gpio_count());
+                user_gpio_string(hexString, user_gpio_count());
+                ret = true;
+            } else if (pAction && !strcmp(pAction->valuestring, "gpio_status_set")) {
+                pObj = cJSON_GetObjectItem(pSub, "x");
+                if (pObj) {
+                    cmd = atoi(pObj->valuestring);
+                    pObj = cJSON_GetObjectItem(pSub, "y");
+                    if (pObj) {
+                        addr_type = atoi(pObj->valuestring);
+                        ret = user_gpio_set(cmd, addr_type);
                     }
                 }
             } else {
@@ -548,6 +591,9 @@ void user_fx2n_handle_request(struct client_conn_param *pclient_param, uint8 *pb
     if (hexString) {
         free(hexString);
     }
+	if (pbuf) {
+		free(pbuf);
+	}
 }
 #endif
 
@@ -1532,6 +1578,17 @@ static bool esp_token_invalid()
     return true;
 }
 
+//yfnipnfvt5bmhemmtn2piy3y56gi2rtoexezme4n
+static void create_random_token(void)
+{
+    int i;
+    uint32 rnd;
+
+    for (i = 0; i < 5; i++) {
+        sprintf(esp_param.token + i * 8, "%08x", rand() & 0x7fffffff);
+    }
+}
+
 void  
 user_esp_platform_maintainer(void *pvParameters)
 {
@@ -1575,7 +1632,8 @@ user_esp_platform_maintainer(void *pvParameters)
     //printf("rtc_info.reason 000-%d, 000-%d reboot, flag %d\n",rtc_info.reason,(REBOOT_MAGIC == user_boot_flag),user_boot_flag);
 
     /*if not reboot back, power on with key pressed, enter stationap mode*/
-    if( REBOOT_MAGIC != user_boot_flag && 0 == user_get_key_status()){
+    //if( REBOOT_MAGIC != user_boot_flag && 0 == user_get_key_status()){
+    if (0) {
         /*device power on with stationap mode defaultly, neednt config again*/
         //user_platform_stationap_enable();
         printf("enter softap+station mode\n");
@@ -1631,10 +1689,17 @@ user_esp_platform_maintainer(void *pvParameters)
 #endif
 
     /*if token not ready, wait here*/
+#if 0
     while(TRUE != esp_param.tokenrdy) {
         ESP_DBG("wait token...\n");
         vTaskDelay(2000 / portTICK_RATE_MS);
     }
+#else
+    if (esp_param.tokenrdy != TRUE) {
+        create_random_token();
+        esp_param.tokenrdy = TRUE;
+    }
+#endif
 
     while(1){
         

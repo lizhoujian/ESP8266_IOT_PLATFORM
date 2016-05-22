@@ -121,6 +121,7 @@ user_uartovernet_task(void *pvParameters)
     char  *udp_msg;
     u8 ValueFromReceive = 0;
     portBASE_TYPE xStatus;
+    int bufSize = 0; // snd \recv buf size, set to zero for directly snd\recv
     int nNetTimeout = 10000;
 
     memset(&server_addr, 0, sizeof(server_addr));
@@ -155,6 +156,8 @@ user_uartovernet_task(void *pvParameters)
         memset(udp_msg, 0, len_udp_msg);
         memset(&from, 0, sizeof(from));
         setsockopt(sock_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&nNetTimeout, sizeof(int));
+        setsockopt(sock_fd, SOL_SOCKET, SO_RCVBUF, (const char*)&bufSize, sizeof(int));
+        setsockopt(sock_fd, SOL_SOCKET, SO_SNDBUF, (const char*)&bufSize, sizeof(int));
         fromlen = sizeof(struct sockaddr_in);
         ret = recvfrom(sock_fd, (u8 *)udp_msg, len_udp_msg, 0, (struct sockaddr *)&from, (socklen_t *)&fromlen);
         if (ret > 0) {

@@ -110,10 +110,13 @@ typedef struct
 #define GPIO_AS_OUTPUT(gpio_bits)   gpio_output_conf(0, 0, gpio_bits, 0)
 #define GPIO_INPUT_GET(gpio_no)     ((gpio_input_get()>>gpio_no)&BIT0)
 
+uint8 gpio_read_output(int num);
+
 void gpio16_output_conf(void);
 void gpio16_output_set(uint8 value);
 void gpio16_input_conf(void);
 uint8 gpio16_input_get(void);
+uint8 gpio16_read_output(void);
 
 void gpio_output_conf(uint32 set_mask, uint32 clear_mask, uint32 enable_mask, uint32 disable_mask);
 void gpio_intr_handler_register(void *fn, void *arg);

@@ -876,3 +876,4 @@ bool fx_write(u8 addr_type, u16 addr, u8 *data, u16 len)
         return fx_execute(addr_type, ACTION_WRITE, addr, data, len);
     }
 }
+

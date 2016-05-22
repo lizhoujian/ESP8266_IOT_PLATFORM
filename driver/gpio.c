@@ -95,6 +95,11 @@ gpio_output_conf(uint32 set_mask, uint32 clear_mask, uint32 enable_mask, uint32 
     GPIO_REG_WRITE(GPIO_ENABLE_W1TC_ADDRESS, disable_mask);
 }
 
+uint8 gpio_read_output(int num)
+{
+    return ((GPIO_REG_READ(GPIO_OUT_ADDRESS) >> num) & 1) ;
+}
+
 /*
  * Sample the value of GPIO input pins and returns a bitmask.
  */
@@ -197,6 +202,11 @@ gpio16_input_conf(void)
                    (READ_PERI_REG(RTC_GPIO_CONF) & (uint32)0xfffffffe) | (uint32)0x0);  //mux configuration for out enable
     WRITE_PERI_REG(RTC_GPIO_ENABLE,
                    READ_PERI_REG(RTC_GPIO_ENABLE) & (uint32)0xfffffffe);    //out disable
+}
+
+uint8 gpio16_read_output(void)
+{
+    return READ_PERI_REG(RTC_GPIO_OUT) & 1;
 }
 
 uint8
